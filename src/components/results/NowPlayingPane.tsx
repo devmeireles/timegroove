@@ -1,5 +1,8 @@
 "use client";
 
+import { useState } from "react";
+
+import { AlbumDetailDialog } from "@/components/details/AlbumDetailDialog";
 import { useYoutubePlayerContext } from "@/contexts/YoutubePlayerContext";
 import { splitDiscogsTitle } from "@/lib/text/normalize";
 
@@ -13,6 +16,7 @@ import { splitDiscogsTitle } from "@/lib/text/normalize";
 export function NowPlayingPane() {
   const { loadedRelease, loadedSpotify, isPlaying, togglePlay, stop } =
     useYoutubePlayerContext();
+  const [detailOpen, setDetailOpen] = useState(false);
 
   if (!loadedRelease) return null;
 
@@ -30,27 +34,42 @@ export function NowPlayingPane() {
       className="shrink-0 border-t border-(--color-border) bg-(--color-surface)"
     >
       <div className="flex items-stretch gap-4 px-6 py-3">
-        <Cover url={coverUrl} title={album || loadedRelease.title || "release"} />
+        <button
+          type="button"
+          onClick={() => setDetailOpen(true)}
+          aria-label={`View details for ${album || loadedRelease.title || "Untitled"}`}
+          className="-m-1 flex min-w-0 flex-1 items-stretch gap-4 rounded-sm p-1 text-left transition-colors hover:bg-surface-elevated/50 focus:outline-none focus-visible:bg-surface-elevated/60"
+        >
+          <Cover
+            url={coverUrl}
+            title={album || loadedRelease.title || "release"}
+          />
 
-        <div className="flex min-w-0 flex-1 flex-col justify-center gap-1">
-          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-(--color-foreground-subtle)">
-            Now playing
-          </p>
-          <h3 className="truncate text-sm text-(--color-foreground)">
-            {album || loadedRelease.title || "Untitled"}
-          </h3>
-          <p className="truncate font-mono text-[11px] text-(--color-foreground-muted)">
-            {artist ?? "Unknown artist"}
-            {loadedRelease.year ? ` · ${loadedRelease.year}` : ""}
-            {loadedRelease.country ? ` · ${loadedRelease.country}` : ""}
-          </p>
-        </div>
+          <div className="flex min-w-0 flex-1 flex-col justify-center gap-1">
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-(--color-foreground-subtle)">
+              Now playing
+            </p>
+            <h3 className="truncate text-sm text-(--color-foreground)">
+              {album || loadedRelease.title || "Untitled"}
+            </h3>
+            <p className="truncate font-mono text-[11px] text-(--color-foreground-muted)">
+              {artist ?? "Unknown artist"}
+              {loadedRelease.year ? ` · ${loadedRelease.year}` : ""}
+              {loadedRelease.country ? ` · ${loadedRelease.country}` : ""}
+            </p>
+          </div>
+        </button>
 
         <div className="flex shrink-0 items-center gap-2">
           <PlayPauseButton isPlaying={isPlaying} onToggle={togglePlay} />
           <CloseButton onClick={stop} />
         </div>
       </div>
+      <AlbumDetailDialog
+        release={detailOpen ? loadedRelease : null}
+        spotify={detailOpen ? loadedSpotify : null}
+        onClose={() => setDetailOpen(false)}
+      />
     </div>
   );
 }
