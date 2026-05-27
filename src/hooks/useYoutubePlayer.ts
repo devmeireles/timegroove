@@ -119,6 +119,8 @@ export interface UseYoutubePlayer {
   isPlaying: boolean;
   /** Per-release resolution status — undefined means never attempted. */
   resolveStatus: Map<string, ResolveStatus>;
+  /** Current queue order used for auto-advance on track end. */
+  registerQueue: (items: PlayReleaseInput[]) => void;
   playRelease: (input: PlayReleaseInput) => void;
   /** Toggle play/pause on the currently-loaded release. No-op when nothing
    * is loaded. */
@@ -147,6 +149,14 @@ export function useYoutubePlayer(): UseYoutubePlayer {
   const [resolveStatus, setResolveStatus] = useState<
     Map<string, ResolveStatus>
   >(new Map());
+
+  const queueRef = useRef<PlayReleaseInput[]>([]);
+  const loadedReleaseRef = useRef<NormalizedRelease | null>(null);
+  const playReleaseRef = useRef<((input: PlayReleaseInput) => void) | null>(null);
+
+  useEffect(() => {
+    loadedReleaseRef.current = loadedRelease;
+  }, [loadedRelease]);
 
   const inFlightRef = useRef<AbortController | null>(null);
   useEffect(() => {
@@ -197,6 +207,26 @@ export function useYoutubePlayer(): UseYoutubePlayer {
                 if (event.data === 1) setIsPlaying(true);
                 else if (event.data === 2 || event.data === 0)
                   setIsPlaying(false);
+
+                if (event.data === 0) {
+                  const current = loadedReleaseRef.current;
+                  const play = playReleaseRef.current;
+                  if (!current || !play) return;
+
+                  const queue = queueRef.current;
+                  const currentIndex = queue.findIndex(
+                    (item) =>
+                      item.release.id === current.id &&
+                      (item.release.type === "master" ? "master" : "release") ===
+                        (current.type === "master" ? "master" : "release"),
+                  );
+                  if (currentIndex < 0) return;
+
+                  const next = queue[currentIndex + 1];
+                  if (!next) return;
+
+                  play(next);
+                }
               },
             },
           });
@@ -291,6 +321,14 @@ export function useYoutubePlayer(): UseYoutubePlayer {
     [ensurePlayer, loadedRelease, isPlaying],
   );
 
+  useEffect(() => {
+    playReleaseRef.current = playRelease;
+  }, [playRelease]);
+
+  const registerQueue = useCallback((items: PlayReleaseInput[]) => {
+    queueRef.current = items;
+  }, []);
+
   const togglePlay = useCallback(() => {
     if (!playerRef.current || !loadedRelease) return;
     if (isPlaying) playerRef.current.pauseVideo();
@@ -316,6 +354,7 @@ export function useYoutubePlayer(): UseYoutubePlayer {
     loadedSpotify,
     isPlaying,
     resolveStatus,
+    registerQueue,
     playRelease,
     togglePlay,
     stop,

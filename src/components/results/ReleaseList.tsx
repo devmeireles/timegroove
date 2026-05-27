@@ -47,6 +47,7 @@ export function ReleaseList({
     loadedRelease,
     isPlaying,
     resolveStatus,
+    registerQueue,
     playRelease,
   } = useYoutubePlayerContext();
   void _ignoredContainer;
@@ -166,6 +167,19 @@ export function ReleaseList({
         return a.index - b.index;
       });
   }, [data.results, enrichment, pageSize]);
+
+  useEffect(() => {
+    registerQueue(
+      sorted.map(({ release }) => {
+        const reconcileState = enrichment.get(release.id);
+        const spotify =
+          reconcileState && "enriched" in reconcileState
+            ? reconcileState.enriched.spotify
+            : null;
+        return { release, spotify };
+      }),
+    );
+  }, [enrichment, registerQueue, sorted]);
 
   const requestedRef = useRef(false);
   useEffect(() => {
