@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import { auth0 } from "@/lib/auth0";
 import { syncAuth0UserToDatabase } from "@/services/auth/userSync";
 import "./globals.css";
@@ -38,6 +39,7 @@ export default async function RootLayout({
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body className="h-screen w-screen overflow-hidden antialiased">
         {children}
+        <Analytics />
       </body>
     </html>
   );
