@@ -42,21 +42,15 @@ export function FilterPanel({
         event.preventDefault();
         onSubmit();
       }}
-      className="flex items-end gap-6 px-6 py-4"
+      className="flex items-end justify-center gap-6 px-6 py-4"
     >
-      <div className="w-48 shrink-0">
-        <FilterField label="Country">
-          <CountryBadge name={values.country ?? null} />
-        </FilterField>
-      </div>
-
       <div className="w-28 shrink-0">
         <FilterField label="Year" htmlFor={yearId}>
           <TextInput
             id={yearId}
             inputMode="numeric"
             pattern="[0-9]*"
-            placeholder="1993"
+            placeholder="any year"
             value={values.year ?? ""}
             onChange={(event) =>
               update("year", event.target.value || undefined)
@@ -75,9 +69,7 @@ export function FilterPanel({
         </FilterField>
       </div>
 
-      <div className="flex-1" />
-
-      <div className="flex shrink-0 items-center gap-2">
+      <div className="flex shrink-0 items-center gap-2 pb-px">
         <button
           type="button"
           onClick={onReset}
@@ -90,29 +82,15 @@ export function FilterPanel({
           type="submit"
           disabled={isLoading || !values.country}
           className="rounded-sm bg-(--color-foreground) px-4 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-(--color-background) transition-opacity hover:opacity-90 disabled:opacity-50"
-          title={!values.country ? "Pick a country on the map first" : undefined}
+          title={
+            !values.country
+              ? "Click a country on the map to start"
+              : "Year and genre are optional"
+          }
         >
           {isLoading ? "Digging…" : "Re-run search"}
         </button>
       </div>
     </form>
-  );
-}
-
-function CountryBadge({ name }: { name: string | null }) {
-  if (!name) {
-    return (
-      <div className="flex h-8.5 w-full items-center rounded-sm border border-dashed border-(--color-border) bg-(--color-surface) px-2.5 font-mono text-[11px] text-(--color-foreground-subtle)">
-        click the map ↑
-      </div>
-    );
-  }
-  return (
-    <div className="flex h-8.5 w-full items-center justify-between rounded-sm border border-(--color-accent-muted) bg-(--color-surface) px-2.5">
-      <span className="font-mono text-sm text-(--color-accent)">{name}</span>
-      <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-(--color-foreground-subtle)">
-        from map
-      </span>
-    </div>
   );
 }

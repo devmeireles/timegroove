@@ -156,12 +156,23 @@ export function GenreCombobox({
               handleClear();
               inputRef.current?.focus();
             }}
-            className="font-mono text-[10px] uppercase tracking-[0.18em] text-(--color-foreground-subtle) hover:text-(--color-foreground)"
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-(--color-foreground-subtle) hover:bg-(--color-surface-elevated) hover:text-(--color-foreground)"
           >
-            Clear
+            <svg
+              width="10"
+              height="10"
+              viewBox="0 0 10 10"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              aria-hidden="true"
+            >
+              <path d="M2 2 L8 8 M8 2 L2 8" />
+            </svg>
           </button>
         ) : (
-          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-(--color-foreground-subtle)">
+          <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.18em] text-(--color-foreground-subtle)">
             ▾
           </span>
         )}
