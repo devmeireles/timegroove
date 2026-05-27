@@ -34,6 +34,21 @@ interface ReconcileInput {
 
 const inflightReconciliations = new Map<string, Promise<EnrichedRelease>>();
 
+function compactEnrichedSpotify(payload: EnrichedSpotify): EnrichedSpotify {
+  const firstImage = payload.images[0] ? [payload.images[0]] : [];
+  return {
+    artistId: payload.artistId,
+    albumId: payload.albumId,
+    name: payload.name,
+    artists: payload.artists,
+    images: firstImage,
+    externalUrl: payload.externalUrl,
+    popularity: payload.popularity,
+    // Not used by the current UI; omit to shrink cache rows.
+    tracks: [],
+  };
+}
+
 /**
  * Public entry point. Returns an EnrichedRelease, either from cache or from
  * a freshly-scored Spotify match. The Discogs row is supplied by the caller
@@ -104,7 +119,7 @@ async function reconcileReleaseInternal({
     spotifyTrackIds: enriched.tracks.map((t) => t.id),
     confidenceScore: confidence,
     status: "matched",
-    rawSpotifyPayload: enriched,
+    rawSpotifyPayload: compactEnrichedSpotify(enriched),
   });
 
   return {

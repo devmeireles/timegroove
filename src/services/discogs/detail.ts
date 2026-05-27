@@ -4,6 +4,7 @@ import {
   findEntityRawPayload,
   saveVideoResolution,
 } from "@/repositories/discogsVideoResolutions";
+import { compactDiscogsDetailPayload } from "@/services/discogs/compact";
 import { extractYoutubeVideoId } from "@/services/youtube/resolveFromDiscogs";
 import type {
   NormalizedDiscogsDetail,
@@ -47,7 +48,7 @@ export async function getDiscogsDetail(
     discogsId,
     discogsType,
     youtubeVideoId: videoId,
-    rawPayload: fresh,
+    rawPayload: compactDiscogsDetailPayload(fresh),
   });
 
   return normalizeDetail(fresh, discogsType);

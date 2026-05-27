@@ -6,6 +6,7 @@ import {
   findVideoResolution,
   saveVideoResolution,
 } from "@/repositories/discogsVideoResolutions";
+import { compactDiscogsDetailPayload } from "@/services/discogs/compact";
 
 /**
  * Discogs releases & masters carry a community-curated `videos[]` field with
@@ -70,13 +71,13 @@ export async function resolveYoutubeFromDiscogs(
 
   const videoId = firstYoutubeVideoId(detail.videos);
 
-  // Cache the entire detail payload (not just `videos`) so the album-detail
+  // Cache a compact detail payload (not just `videos`) so the album-detail
   // dialog can reuse this row without an extra Discogs API call.
   await saveVideoResolution({
     discogsId,
     discogsType,
     youtubeVideoId: videoId,
-    rawPayload: detail,
+    rawPayload: compactDiscogsDetailPayload(detail),
   });
 
   return { videoId, cached: false };

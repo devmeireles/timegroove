@@ -4,6 +4,7 @@ import {
   findArtist,
   saveArtist,
 } from "@/repositories/discogsArtistDetails";
+import { compactDiscogsArtistPayload } from "@/services/discogs/compact";
 import type { NormalizedArtistDetail } from "@/types/discogs";
 import { getArtistDetail } from "./client";
 import { buildDiscogsUrl } from "./url";
@@ -23,7 +24,7 @@ export async function getDiscogsArtist(
   }
 
   const fresh = await getArtistDetail(artistId, { signal });
-  await saveArtist({ artistId, rawPayload: fresh });
+  await saveArtist({ artistId, rawPayload: compactDiscogsArtistPayload(fresh) });
   return normalizeArtist(fresh, artistId);
 }
 
