@@ -2,9 +2,11 @@
 
 import { useId } from "react";
 
+import { isDiscogsGenre, type DiscogsGenre } from "@/lib/discogs/genres";
 import type { DiscogsSearchFilters } from "@/types/discogs";
 
 import { FilterField } from "./FilterField";
+import { GenreCombobox } from "./GenreCombobox";
 import { TextInput } from "./TextInput";
 
 interface FilterPanelProps {
@@ -22,11 +24,7 @@ export function FilterPanel({
   onReset,
   isLoading,
 }: FilterPanelProps) {
-  const ids = {
-    country: useId(),
-    year: useId(),
-    genre: useId(),
-  };
+  const yearId = useId();
 
   const update = <K extends keyof DiscogsSearchFilters>(
     key: K,
@@ -35,43 +33,27 @@ export function FilterPanel({
     onChange({ ...values, [key]: value });
   };
 
+  const currentGenre: DiscogsGenre | null =
+    values.genre && isDiscogsGenre(values.genre) ? values.genre : null;
+
   return (
     <form
       onSubmit={(event) => {
         event.preventDefault();
         onSubmit();
       }}
-      className="flex h-full flex-col"
+      className="flex items-end gap-6 px-6 py-4"
     >
-      <header className="px-5 pt-6 pb-5">
-        <h1 className="font-mono text-xs uppercase tracking-[0.32em] text-(--color-foreground-subtle)">
-          Time&nbsp;Groove
-        </h1>
-        <p className="mt-1 text-lg leading-tight tracking-tight text-(--color-foreground)">
-          A music time capsule.
-        </p>
-        <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.18em] text-(--color-foreground-subtle)">
-          Pick a place, a year, a sound
-        </p>
-      </header>
-
-      <div className="border-t border-(--color-border)" />
-
-      <div className="flex flex-1 flex-col gap-5 overflow-y-auto px-5 py-5">
-        <FilterField label="Country" htmlFor={ids.country} hint="e.g. Brazil, Japan, US">
-          <TextInput
-            id={ids.country}
-            placeholder="Brazil"
-            value={values.country ?? ""}
-            onChange={(event) =>
-              update("country", event.target.value || undefined)
-            }
-          />
+      <div className="w-48 shrink-0">
+        <FilterField label="Country">
+          <CountryBadge name={values.country ?? null} />
         </FilterField>
+      </div>
 
-        <FilterField label="Year" htmlFor={ids.year} hint="e.g. 1977">
+      <div className="w-28 shrink-0">
+        <FilterField label="Year" htmlFor={yearId}>
           <TextInput
-            id={ids.year}
+            id={yearId}
             inputMode="numeric"
             pattern="[0-9]*"
             placeholder="1993"
@@ -81,38 +63,56 @@ export function FilterPanel({
             }
           />
         </FilterField>
+      </div>
 
-        <FilterField label="Genre" htmlFor={ids.genre} hint="e.g. Jazz, Funk / Soul, Rock">
-          <TextInput
-            id={ids.genre}
-            placeholder="Jazz"
-            value={values.genre ?? ""}
-            onChange={(event) =>
-              update("genre", event.target.value || undefined)
-            }
+      <div className="w-56 shrink-0">
+        <FilterField label="Genre">
+          <GenreCombobox
+            value={currentGenre}
+            onChange={(next) => update("genre", next ?? undefined)}
+            placement="top"
           />
         </FilterField>
       </div>
 
-      <div className="border-t border-(--color-border)" />
+      <div className="flex-1" />
 
-      <div className="grid grid-cols-3 gap-2 px-5 py-4">
+      <div className="flex shrink-0 items-center gap-2">
         <button
           type="button"
           onClick={onReset}
           disabled={isLoading}
-          className="col-span-1 rounded-sm border border-(--color-border) px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-(--color-foreground-muted) transition-colors hover:border-(--color-border-strong) hover:text-(--color-foreground) disabled:opacity-50"
+          className="rounded-sm border border-(--color-border) px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-(--color-foreground-muted) transition-colors hover:border-(--color-border-strong) hover:text-(--color-foreground) disabled:opacity-50"
         >
           Reset
         </button>
         <button
           type="submit"
-          disabled={isLoading}
-          className="col-span-2 rounded-sm bg-(--color-foreground) px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-(--color-background) transition-opacity hover:opacity-90 disabled:opacity-50"
+          disabled={isLoading || !values.country}
+          className="rounded-sm bg-(--color-foreground) px-4 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-(--color-background) transition-opacity hover:opacity-90 disabled:opacity-50"
+          title={!values.country ? "Pick a country on the map first" : undefined}
         >
-          {isLoading ? "Digging…" : "Search the crate"}
+          {isLoading ? "Digging…" : "Re-run search"}
         </button>
       </div>
     </form>
+  );
+}
+
+function CountryBadge({ name }: { name: string | null }) {
+  if (!name) {
+    return (
+      <div className="flex h-8.5 w-full items-center rounded-sm border border-dashed border-(--color-border) bg-(--color-surface) px-2.5 font-mono text-[11px] text-(--color-foreground-subtle)">
+        click the map ↑
+      </div>
+    );
+  }
+  return (
+    <div className="flex h-8.5 w-full items-center justify-between rounded-sm border border-(--color-accent-muted) bg-(--color-surface) px-2.5">
+      <span className="font-mono text-sm text-(--color-accent)">{name}</span>
+      <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-(--color-foreground-subtle)">
+        from map
+      </span>
+    </div>
   );
 }

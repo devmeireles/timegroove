@@ -1,24 +1,17 @@
 "use client";
 
 import { JsonViewer } from "./JsonViewer";
-import type {
-  DiscogsSearchFilters,
-  NormalizedSearchResponse,
-} from "@/types/discogs";
+import type { NormalizedSearchResponse } from "@/types/discogs";
 
 interface ResultsPaneProps {
   data: NormalizedSearchResponse | null;
   isLoading: boolean;
   error: string | null;
-  /** Stable shape of the most recently submitted query, for the header. */
-  lastQuery: DiscogsSearchFilters | null;
 }
 
 /**
- * Distil the normalized response into exactly the fields the brief calls out
- * (title, year, country, label, genre, style, type, format, Discogs ID).
- * Keeping the JSON viewer focused on these fields makes the archive feel
- * curated instead of dumping the upstream payload.
+ * Distil the normalized response into the fields the time-capsule cares
+ * about. Keeps the JSON viewer focused, not a dump of the upstream payload.
  */
 function shape(data: NormalizedSearchResponse) {
   return {
@@ -40,55 +33,18 @@ function shape(data: NormalizedSearchResponse) {
   };
 }
 
-function formatQuerySummary(query: ResultsPaneProps["lastQuery"]): string {
-  if (!query) return "no query yet";
-  const parts = Object.entries(query)
-    .filter(([, v]) => v !== undefined && v !== "" && v !== null)
-    .map(([k, v]) => `${k}=${v}`);
-  return parts.length === 0 ? "no filters" : parts.join("  ·  ");
-}
-
-export function ResultsPane({
-  data,
-  isLoading,
-  error,
-  lastQuery,
-}: ResultsPaneProps) {
-  return (
-    <section className="flex h-full flex-1 flex-col bg-(--color-background)">
-      <header className="flex shrink-0 items-center justify-between gap-4 border-b border-(--color-border) px-6 py-3">
-        <div className="min-w-0">
-          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-(--color-foreground-subtle)">
-            Response
-          </p>
-          <p
-            className="mt-0.5 truncate font-mono text-[11px] text-(--color-foreground-muted)"
-            title={formatQuerySummary(lastQuery)}
-          >
-            {formatQuerySummary(lastQuery)}
-          </p>
-        </div>
-        <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.18em] text-(--color-foreground-subtle)">
-          {isLoading ? <span className="text-(--color-accent)">Loading…</span> : null}
-          {data ? <span>{data.pagination.items.toLocaleString()} hits</span> : null}
-        </div>
-      </header>
-
-      <div className="flex-1 overflow-auto px-6 py-5">
-        {error ? <ErrorState message={error} /> : null}
-        {!error && data ? <JsonViewer data={shape(data)} /> : null}
-        {!error && !data && !isLoading ? <EmptyState /> : null}
-        {!error && !data && isLoading ? <SkeletonState /> : null}
-      </div>
-    </section>
-  );
+export function ResultsPane({ data, isLoading, error }: ResultsPaneProps) {
+  if (error) return <ErrorState message={error} />;
+  if (data) return <JsonViewer data={shape(data)} />;
+  if (isLoading) return <SkeletonState />;
+  return <EmptyState />;
 }
 
 function EmptyState() {
   return (
     <div className="flex h-full flex-col items-start justify-center gap-3 font-mono text-sm text-(--color-foreground-muted)">
       <p className="text-(--color-foreground-subtle)">
-        {"// Pick a country, a year, a genre."}
+        {"// Pick a country on the map, set a year and a genre."}
       </p>
       <p className="text-(--color-foreground-subtle)">
         {"// Try "}

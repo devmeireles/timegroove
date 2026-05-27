@@ -3,8 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 
 import { FilterPanel } from "@/components/filters/FilterPanel";
-import { Sidebar } from "@/components/layout/Sidebar";
-import { ResultsPane } from "@/components/viewer/ResultsPane";
+import { MainPane } from "@/components/layout/MainPane";
 import {
   SearchRequestError,
   searchReleases,
@@ -60,6 +59,7 @@ export default function HomePage() {
   }, []);
 
   const handleSubmit = useCallback(() => {
+    if (!filters.country) return;
     void runSearch({ ...filters, page: 1 });
   }, [filters, runSearch]);
 
@@ -71,9 +71,30 @@ export default function HomePage() {
     setLastQuery(null);
   }, []);
 
+  // Clicking a country on the map sets the filter AND auto-submits, since
+  // map interaction is meant to feel like exploration, not form filling.
+  const handleSelectCountry = useCallback(
+    (country: string) => {
+      const next: DiscogsSearchFilters = { ...filters, country, page: 1 };
+      setFilters(next);
+      void runSearch(next);
+    },
+    [filters, runSearch],
+  );
+
   return (
-    <div className="flex h-screen w-screen overflow-hidden">
-      <Sidebar>
+    <div className="flex h-screen w-screen flex-col overflow-hidden">
+      <main className="min-h-0 flex-1 overflow-hidden">
+        <MainPane
+          data={data}
+          isLoading={isLoading}
+          error={error}
+          lastQuery={lastQuery}
+          selectedCountry={filters.country ?? null}
+          onSelectCountry={handleSelectCountry}
+        />
+      </main>
+      <div className="shrink-0 border-t border-(--color-border) bg-(--color-surface)">
         <FilterPanel
           values={filters}
           onChange={setFilters}
@@ -81,13 +102,7 @@ export default function HomePage() {
           onReset={handleReset}
           isLoading={isLoading}
         />
-      </Sidebar>
-      <ResultsPane
-        data={data}
-        isLoading={isLoading}
-        error={error}
-        lastQuery={lastQuery}
-      />
+      </div>
     </div>
   );
 }
