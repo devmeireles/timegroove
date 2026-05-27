@@ -1,6 +1,7 @@
 import "server-only";
 
 import { serverEnv } from "@/lib/env";
+import { delayMs, parseRetryAfterSeconds } from "@/services/http/retry";
 import type {
   DiscogsRawSearchResponse,
   DiscogsSearchFilters,
@@ -28,25 +29,6 @@ interface FetchOptions {
 }
 
 const MAX_RATE_LIMIT_RETRIES = 2;
-const DEFAULT_RETRY_AFTER_SECONDS = 1;
-
-function parseRetryAfterSeconds(value: string | null): number {
-  if (!value) return DEFAULT_RETRY_AFTER_SECONDS;
-  const asNumber = Number(value);
-  if (Number.isFinite(asNumber) && asNumber > 0) {
-    return Math.max(DEFAULT_RETRY_AFTER_SECONDS, asNumber);
-  }
-  const retryAt = Date.parse(value);
-  if (Number.isFinite(retryAt)) {
-    const seconds = Math.ceil((retryAt - Date.now()) / 1000);
-    return Math.max(DEFAULT_RETRY_AFTER_SECONDS, seconds);
-  }
-  return DEFAULT_RETRY_AFTER_SECONDS;
-}
-
-async function delayMs(ms: number): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 async function discogsFetch<T>(
   url: string,

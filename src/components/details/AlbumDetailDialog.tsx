@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ExternalLink as ExternalLinkIcon, X } from "lucide-react";
 
+import { CoverArt } from "@/components/common/CoverArt";
 import { Dialog } from "@/components/details/Dialog";
 import { fetchDiscogsArtist } from "@/lib/clientArtist";
 import { fetchDiscogsDetail } from "@/lib/clientDetail";
@@ -192,7 +194,12 @@ function DialogBody({
 
       <div className="flex-1 overflow-y-auto px-6 py-5">
         <section className="flex flex-col gap-5 sm:flex-row sm:items-start">
-          <Cover url={coverUrl} title={title} />
+          <CoverArt
+            url={coverUrl}
+            title={title}
+            imageClassName="h-40 w-40 shrink-0 rounded-sm border border-(--color-border) object-cover sm:h-48 sm:w-48"
+            fallbackClassName="flex h-40 w-40 shrink-0 items-center justify-center rounded-sm border border-dashed border-(--color-border) bg-(--color-background) font-mono text-[10px] uppercase tracking-[0.18em] text-(--color-foreground-subtle) sm:h-48 sm:w-48"
+          />
           <div className="flex min-w-0 flex-1 flex-col gap-3">
             <div>
               <h2 className="text-xl leading-tight tracking-tight text-(--color-foreground)">
@@ -310,25 +317,6 @@ function DialogBody({
   );
 }
 
-function Cover({ url, title }: { url: string | null; title: string }) {
-  if (url) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={url}
-        alt={title}
-        loading="lazy"
-        className="h-40 w-40 shrink-0 rounded-sm border border-(--color-border) object-cover sm:h-48 sm:w-48"
-      />
-    );
-  }
-  return (
-    <div className="flex h-40 w-40 shrink-0 items-center justify-center rounded-sm border border-dashed border-(--color-border) bg-(--color-background) font-mono text-[10px] uppercase tracking-[0.18em] text-(--color-foreground-subtle) sm:h-48 sm:w-48">
-      no art
-    </div>
-  );
-}
-
 function Row({
   label,
   children,
@@ -341,7 +329,7 @@ function Row({
       <dt className="uppercase tracking-[0.18em] text-(--color-foreground-subtle)">
         {label}
       </dt>
-      <dd className="min-w-0 break-words text-(--color-foreground-muted)">
+      <dd className="min-w-0 wrap-break-word text-(--color-foreground-muted)">
         {children}
       </dd>
     </>
@@ -456,7 +444,7 @@ function Tracklist({
         return (
           <li
             key={`${index}-${track.title}`}
-            className="grid grid-cols-[2.5rem_1fr_auto] items-baseline gap-3 border-b border-(--color-border)/60 py-1.5 font-mono text-[11px] last:border-b-0"
+            className="grid grid-cols-[2.5rem_1fr_auto] items-baseline gap-3 border-b border-border/60 py-1.5 font-mono text-[11px] last:border-b-0"
           >
             <span className="text-(--color-foreground-subtle)">
               {track.position || "—"}
@@ -484,21 +472,7 @@ function ExternalLink({ href, label }: { href: string; label: string }) {
       title={`Open on ${label}`}
     >
       <span>{label}</span>
-      <svg
-        width="10"
-        height="10"
-        viewBox="0 0 12 12"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden="true"
-      >
-        <path d="M5 2 H2 V10 H10 V7" />
-        <path d="M7 2 H10 V5" />
-        <path d="M10 2 L5.5 6.5" />
-      </svg>
+      <ExternalLinkIcon size={10} aria-hidden="true" />
     </a>
   );
 }
@@ -511,18 +485,7 @@ function CloseButton({ onClick }: { onClick: () => void }) {
       aria-label="Close"
       className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-(--color-foreground-subtle) transition-colors hover:bg-(--color-surface-elevated) hover:text-(--color-foreground)"
     >
-      <svg
-        width="14"
-        height="14"
-        viewBox="0 0 14 14"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-        aria-hidden="true"
-      >
-        <path d="M3 3 L11 11 M11 3 L3 11" />
-      </svg>
+      <X size={14} aria-hidden="true" />
     </button>
   );
 }

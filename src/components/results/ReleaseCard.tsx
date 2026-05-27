@@ -1,5 +1,15 @@
 "use client";
 
+import {
+  AlertCircle,
+  ExternalLink,
+  LoaderCircle,
+  Pause,
+  Play,
+  RotateCcw,
+} from "lucide-react";
+
+import { CoverArt } from "@/components/common/CoverArt";
 import { splitDiscogsTitle } from "@/lib/text/normalize";
 import type { NormalizedRelease } from "@/types/discogs";
 
@@ -47,7 +57,12 @@ export function ReleaseCard({
         aria-label={`View details for ${displayTitle}`}
         className="-m-1 flex min-w-0 flex-1 cursor-pointer items-stretch gap-4 rounded-sm p-1 text-left transition-colors hover:bg-surface-elevated/50 focus:outline-none focus-visible:bg-surface-elevated/60"
       >
-        <Cover url={coverUrl} title={displayTitle} />
+        <CoverArt
+          url={coverUrl}
+          title={displayTitle}
+          imageClassName="h-16 w-16 shrink-0 rounded-sm border border-(--color-border) object-cover"
+          fallbackClassName="flex h-16 w-16 shrink-0 items-center justify-center rounded-sm border border-dashed border-(--color-border) bg-(--color-background) font-mono text-[10px] uppercase tracking-[0.18em] text-(--color-foreground-subtle)"
+        />
 
         <span className="flex min-w-0 flex-1 flex-col justify-between gap-2">
           <span className="block min-w-0">
@@ -94,54 +109,15 @@ function SpotifyLink({ url }: { url: string }) {
       title="Open album on Spotify"
     >
       <span>spotify</span>
-      <ExternalLinkIcon />
+      <ExternalLink size={10} aria-hidden="true" />
     </a>
-  );
-}
-
-function ExternalLinkIcon() {
-  return (
-    <svg
-      width="10"
-      height="10"
-      viewBox="0 0 12 12"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.3"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M5 2 H2 V10 H10 V7" />
-      <path d="M7 2 H10 V5" />
-      <path d="M10 2 L5.5 6.5" />
-    </svg>
-  );
-}
-
-function Cover({ url, title }: { url: string | null; title: string }) {
-  if (url) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={url}
-        alt={title}
-        loading="lazy"
-        className="h-16 w-16 shrink-0 rounded-sm border border-(--color-border) object-cover"
-      />
-    );
-  }
-  return (
-    <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-sm border border-dashed border-(--color-border) bg-(--color-background) font-mono text-[10px] uppercase tracking-[0.18em] text-(--color-foreground-subtle)">
-      no art
-    </div>
   );
 }
 
 /**
  * Bordered tag chips. Genres get a sharper border + brighter text; styles
  * sit one notch quieter. Long values (e.g. "Folk, World, & Country") stay
- * on their own chip and wrap inside it via `break-words` rather than
+ * on their own chip and wrap inside it via `wrap-break-word` rather than
  * stretching the row — keeps the flex-wrap layout balanced.
  */
 function TagLine({ genres, styles }: { genres: string[]; styles: string[] }) {
@@ -156,7 +132,7 @@ function TagLine({ genres, styles }: { genres: string[]; styles: string[] }) {
         <span
           key={`${item.kind}-${item.text}-${i}`}
           className={
-            "rounded-xs border px-1.5 py-0.5 break-words " +
+            "rounded-xs border px-1.5 py-0.5 wrap-break-word " +
             (item.kind === "genre"
               ? "border-(--color-border-strong) text-(--color-foreground-muted)"
               : "border-(--color-border) text-(--color-foreground-subtle)")
@@ -207,7 +183,7 @@ function PlayButton({
           aria-label="No video available"
           title="Discogs has no playable video for this release"
         >
-          <UnavailableIcon />
+          <AlertCircle size={14} aria-hidden="true" />
         </button>
         <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-(--color-foreground-subtle)">
           Unavailable
@@ -226,7 +202,7 @@ function PlayButton({
           aria-label="Retry"
           title="Lookup failed — click to retry"
         >
-          <RetryIcon />
+          <RotateCcw size={13} aria-hidden="true" />
         </button>
         <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-red-400">
           retry
@@ -253,89 +229,17 @@ function PlayButton({
       aria-pressed={isThisPlaying}
       title={isThisPlaying ? "Pause" : isLoaded ? "Resume" : "Play"}
     >
-      {isThisPlaying ? <PauseIcon /> : <PlayIcon />}
+      {isThisPlaying ? (
+        <Pause size={12} fill="currentColor" aria-hidden="true" />
+      ) : (
+        <Play size={12} fill="currentColor" aria-hidden="true" />
+      )}
     </button>
-  );
-}
-
-function PlayIcon() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
-      <path d="M3 2 L10 6 L3 10 Z" fill="currentColor" />
-    </svg>
-  );
-}
-
-function UnavailableIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
-      <path d="M4 3 L11 7 L4 11 Z" fill="currentColor" opacity="0.35" />
-      <line
-        x1="2"
-        y1="12"
-        x2="12"
-        y2="2"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function RetryIcon() {
-  return (
-    <svg
-      width="13"
-      height="13"
-      viewBox="0 0 13 13"
-      aria-hidden="true"
-      fill="none"
-    >
-      <path
-        d="M11 6.5 A4.5 4.5 0 1 1 6.5 2"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-      />
-      <path
-        d="M6.5 0.5 L6.5 3.5 L9.5 3.5"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function PauseIcon() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
-      <rect x="3" y="2" width="2" height="8" fill="currentColor" />
-      <rect x="7" y="2" width="2" height="8" fill="currentColor" />
-    </svg>
   );
 }
 
 function Spinner() {
   return (
-    <svg
-      width="12"
-      height="12"
-      viewBox="0 0 12 12"
-      aria-hidden="true"
-      className="animate-spin"
-    >
-      <circle
-        cx="6"
-        cy="6"
-        r="4"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeDasharray="6 12"
-      />
-    </svg>
+    <LoaderCircle size={12} aria-hidden="true" className="animate-spin" />
   );
 }

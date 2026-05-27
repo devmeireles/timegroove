@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { Pause, Play, X } from "lucide-react";
 
+import { CoverArt } from "@/components/common/CoverArt";
 import { AlbumDetailDialog } from "@/components/details/AlbumDetailDialog";
 import { useYoutubePlayerContext } from "@/contexts/YoutubePlayerContext";
 import { splitDiscogsTitle } from "@/lib/text/normalize";
@@ -40,9 +42,11 @@ export function NowPlayingPane() {
           aria-label={`View details for ${album || loadedRelease.title || "Untitled"}`}
           className="-m-1 flex min-w-0 flex-1 items-stretch gap-4 rounded-sm p-1 text-left transition-colors hover:bg-surface-elevated/50 focus:outline-none focus-visible:bg-surface-elevated/60"
         >
-          <Cover
+          <CoverArt
             url={coverUrl}
             title={album || loadedRelease.title || "release"}
+            imageClassName="h-14 w-14 shrink-0 rounded-sm border border-(--color-border) object-cover"
+            fallbackClassName="flex h-14 w-14 shrink-0 items-center justify-center rounded-sm border border-dashed border-(--color-border) bg-(--color-background) font-mono text-[10px] uppercase tracking-[0.18em] text-(--color-foreground-subtle)"
           />
 
           <div className="flex min-w-0 flex-1 flex-col justify-center gap-1">
@@ -74,25 +78,6 @@ export function NowPlayingPane() {
   );
 }
 
-function Cover({ url, title }: { url: string | null; title: string }) {
-  if (url) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={url}
-        alt={title}
-        loading="lazy"
-        className="h-14 w-14 shrink-0 rounded-sm border border-(--color-border) object-cover"
-      />
-    );
-  }
-  return (
-    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-sm border border-dashed border-(--color-border) bg-(--color-background) font-mono text-[10px] uppercase tracking-[0.18em] text-(--color-foreground-subtle)">
-      no art
-    </div>
-  );
-}
-
 function PlayPauseButton({
   isPlaying,
   onToggle,
@@ -114,7 +99,11 @@ function PlayPauseButton({
       aria-pressed={isPlaying}
       title={isPlaying ? "Pause" : "Play"}
     >
-      {isPlaying ? <PauseIcon /> : <PlayIcon />}
+      {isPlaying ? (
+        <Pause size={14} fill="currentColor" aria-hidden="true" />
+      ) : (
+        <Play size={14} fill="currentColor" aria-hidden="true" />
+      )}
     </button>
   );
 }
@@ -128,35 +117,7 @@ function CloseButton({ onClick }: { onClick: () => void }) {
       aria-label="Stop and close"
       title="Stop"
     >
-      <svg
-        width="12"
-        height="12"
-        viewBox="0 0 12 12"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        aria-hidden="true"
-      >
-        <path d="M3 3 L9 9 M9 3 L3 9" />
-      </svg>
+      <X size={12} aria-hidden="true" />
     </button>
-  );
-}
-
-function PlayIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 12 12" aria-hidden="true">
-      <path d="M3 2 L10 6 L3 10 Z" fill="currentColor" />
-    </svg>
-  );
-}
-
-function PauseIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 12 12" aria-hidden="true">
-      <rect x="3" y="2" width="2" height="8" fill="currentColor" />
-      <rect x="7" y="2" width="2" height="8" fill="currentColor" />
-    </svg>
   );
 }

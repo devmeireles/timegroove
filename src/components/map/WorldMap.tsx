@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { Minus, Plus, RotateCcw } from "lucide-react";
 import {
   ComposableMap,
   Geographies,
@@ -234,49 +235,21 @@ function ZoomControls({
         onClick={onZoomIn}
         disabled={zoom >= MAX_ZOOM - 0.01}
       >
-        <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
-          <path
-            d="M6 2 L6 10 M2 6 L10 6"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-          />
-        </svg>
+            <Plus size={12} aria-hidden="true" />
       </ZoomButton>
       <ZoomButton
         label="Zoom out"
         onClick={onZoomOut}
         disabled={zoom <= MIN_ZOOM + 0.01}
       >
-        <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
-          <path
-            d="M2 6 L10 6"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-          />
-        </svg>
+            <Minus size={12} aria-hidden="true" />
       </ZoomButton>
       <ZoomButton
         label="Reset view"
         onClick={onReset}
         disabled={zoom === INITIAL_ZOOM}
       >
-        <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" fill="none">
-          <path
-            d="M2 6 A4 4 0 1 1 6 10"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-          />
-          <path
-            d="M2 3 L2 6 L5 6"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
+            <RotateCcw size={12} aria-hidden="true" />
       </ZoomButton>
     </div>
   );

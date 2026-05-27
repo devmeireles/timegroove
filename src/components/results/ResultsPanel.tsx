@@ -1,5 +1,7 @@
 "use client";
 
+import { X } from "lucide-react";
+
 import { ReleaseList } from "@/components/results/ReleaseList";
 import type {
   DiscogsSearchFilters,
@@ -60,18 +62,7 @@ export function ResultsPanel({
           aria-label="Close panel"
           className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-(--color-foreground-subtle) transition-colors hover:bg-(--color-surface-elevated) hover:text-(--color-foreground)"
         >
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 12 12"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            aria-hidden="true"
-          >
-            <path d="M3 3 L9 9 M9 3 L3 9" />
-          </svg>
+          <X size={12} aria-hidden="true" />
         </button>
       </header>
 

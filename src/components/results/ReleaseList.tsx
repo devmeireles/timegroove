@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { LoaderCircle } from "lucide-react";
 
 import { AlbumDetailDialog } from "@/components/details/AlbumDetailDialog";
 import { ReconcileLoadingState } from "@/components/results/ReconcileLoadingState";
@@ -241,22 +242,10 @@ function PaginationFooter({
 
 function Spinner() {
   return (
-    <svg
-      width="12"
-      height="12"
-      viewBox="0 0 12 12"
+    <LoaderCircle
+      size={12}
       aria-hidden="true"
       className="animate-spin text-(--color-accent)"
-    >
-      <circle
-        cx="6"
-        cy="6"
-        r="4"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeDasharray="6 12"
-      />
-    </svg>
+    />
   );
 }
