@@ -22,6 +22,9 @@ interface YTPlayer {
   playVideo(): void;
   pauseVideo(): void;
   loadVideoById(videoId: string): void;
+  getCurrentTime(): number;
+  getDuration(): number;
+  seekTo(seconds: number, allowSeekAhead: boolean): void;
   destroy(): void;
 }
 
@@ -119,12 +122,22 @@ export interface UseYoutubePlayer {
   isPlaying: boolean;
   /** Per-release resolution status — undefined means never attempted. */
   resolveStatus: Map<string, ResolveStatus>;
+  /** Current playback head in seconds. */
+  currentTimeSec: number;
+  /** Current media duration in seconds. */
+  durationSec: number;
   /** Current queue order used for auto-advance on track end. */
   registerQueue: (items: PlayReleaseInput[]) => void;
   playRelease: (input: PlayReleaseInput) => void;
   /** Toggle play/pause on the currently-loaded release. No-op when nothing
    * is loaded. */
   togglePlay: () => void;
+  /** Jump to previous track in the current queue order. */
+  playPrevious: () => void;
+  /** Jump to next track in the current queue order. */
+  playNext: () => void;
+  /** Seek within current track by normalized progress [0..1]. */
+  seekToProgress: (progress: number) => void;
   /** Pause the player and clear `loadedRelease` so the now-playing UI
    * unmounts. */
   stop: () => void;
@@ -146,6 +159,8 @@ export function useYoutubePlayer(): UseYoutubePlayer {
   const [loadedSpotify, setLoadedSpotify] =
     useState<EnrichedSpotify | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTimeSec, setCurrentTimeSec] = useState(0);
+  const [durationSec, setDurationSec] = useState(0);
   const [resolveStatus, setResolveStatus] = useState<
     Map<string, ResolveStatus>
   >(new Map());
@@ -153,6 +168,26 @@ export function useYoutubePlayer(): UseYoutubePlayer {
   const queueRef = useRef<PlayReleaseInput[]>([]);
   const loadedReleaseRef = useRef<NormalizedRelease | null>(null);
   const playReleaseRef = useRef<((input: PlayReleaseInput) => void) | null>(null);
+
+  const playByOffset = useCallback((offset: -1 | 1) => {
+    const current = loadedReleaseRef.current;
+    const play = playReleaseRef.current;
+    if (!current || !play) return;
+
+    const queue = queueRef.current;
+    const currentIndex = queue.findIndex(
+      (item) =>
+        item.release.id === current.id &&
+        (item.release.type === "master" ? "master" : "release") ===
+          (current.type === "master" ? "master" : "release"),
+    );
+    if (currentIndex < 0) return;
+
+    const nextIndex = currentIndex + offset;
+    if (nextIndex < 0 || nextIndex >= queue.length) return;
+
+    play(queue[nextIndex]);
+  }, []);
 
   useEffect(() => {
     loadedReleaseRef.current = loadedRelease;
@@ -170,6 +205,29 @@ export function useYoutubePlayer(): UseYoutubePlayer {
       playerRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    if (!loadedRelease) {
+      setCurrentTimeSec(0);
+      setDurationSec(0);
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      const player = playerRef.current;
+      if (!player) return;
+      try {
+        const nextTime = player.getCurrentTime();
+        const nextDuration = player.getDuration();
+        if (Number.isFinite(nextTime)) setCurrentTimeSec(Math.max(0, nextTime));
+        if (Number.isFinite(nextDuration)) setDurationSec(Math.max(0, nextDuration));
+      } catch {
+        // Player can throw briefly while iframe is reloading.
+      }
+    }, 500);
+
+    return () => window.clearInterval(timer);
+  }, [loadedRelease]);
 
   const ensurePlayer = useCallback(
     (initialVideoId: string): Promise<YTPlayer> => {
@@ -208,24 +266,26 @@ export function useYoutubePlayer(): UseYoutubePlayer {
                 else if (event.data === 2 || event.data === 0)
                   setIsPlaying(false);
 
+                if (event.data === 1 || event.data === 2 || event.data === 3) {
+                  try {
+                    const player = playerRef.current;
+                    if (player) {
+                      const nextTime = player.getCurrentTime();
+                      const nextDuration = player.getDuration();
+                      if (Number.isFinite(nextTime)) {
+                        setCurrentTimeSec(Math.max(0, nextTime));
+                      }
+                      if (Number.isFinite(nextDuration)) {
+                        setDurationSec(Math.max(0, nextDuration));
+                      }
+                    }
+                  } catch {
+                    // Ignore transient player state read errors.
+                  }
+                }
+
                 if (event.data === 0) {
-                  const current = loadedReleaseRef.current;
-                  const play = playReleaseRef.current;
-                  if (!current || !play) return;
-
-                  const queue = queueRef.current;
-                  const currentIndex = queue.findIndex(
-                    (item) =>
-                      item.release.id === current.id &&
-                      (item.release.type === "master" ? "master" : "release") ===
-                        (current.type === "master" ? "master" : "release"),
-                  );
-                  if (currentIndex < 0) return;
-
-                  const next = queue[currentIndex + 1];
-                  if (!next) return;
-
-                  play(next);
+                  playByOffset(1);
                 }
               },
             },
@@ -304,10 +364,14 @@ export function useYoutubePlayer(): UseYoutubePlayer {
           // Auto-play already triggered in onReady.
           setLoadedRelease(release);
           setLoadedSpotify(spotify);
+          setCurrentTimeSec(0);
+          setDurationSec(0);
         } else {
           player.loadVideoById(videoId);
           setLoadedRelease(release);
           setLoadedSpotify(spotify);
+          setCurrentTimeSec(0);
+          setDurationSec(0);
         }
       } catch (err) {
         console.error("YouTube player error:", err);
@@ -335,6 +399,29 @@ export function useYoutubePlayer(): UseYoutubePlayer {
     else playerRef.current.playVideo();
   }, [loadedRelease, isPlaying]);
 
+  const playPrevious = useCallback(() => {
+    playByOffset(-1);
+  }, [playByOffset]);
+
+  const playNext = useCallback(() => {
+    playByOffset(1);
+  }, [playByOffset]);
+
+  const seekToProgress = useCallback((progress: number) => {
+    const player = playerRef.current;
+    if (!player) return;
+    const duration = durationSec;
+    if (!Number.isFinite(duration) || duration <= 0) return;
+    const clamped = Math.min(1, Math.max(0, progress));
+    const target = duration * clamped;
+    try {
+      player.seekTo(target, true);
+      setCurrentTimeSec(target);
+    } catch {
+      // Ignore transient seek failures.
+    }
+  }, [durationSec]);
+
   const stop = useCallback(() => {
     if (playerRef.current) {
       try {
@@ -346,6 +433,8 @@ export function useYoutubePlayer(): UseYoutubePlayer {
     setLoadedRelease(null);
     setLoadedSpotify(null);
     setIsPlaying(false);
+    setCurrentTimeSec(0);
+    setDurationSec(0);
   }, []);
 
   return {
@@ -353,10 +442,15 @@ export function useYoutubePlayer(): UseYoutubePlayer {
     loadedRelease,
     loadedSpotify,
     isPlaying,
+    currentTimeSec,
+    durationSec,
     resolveStatus,
     registerQueue,
     playRelease,
     togglePlay,
+    playPrevious,
+    playNext,
+    seekToProgress,
     stop,
   };
 }
