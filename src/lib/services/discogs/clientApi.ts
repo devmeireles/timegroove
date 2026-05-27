@@ -22,12 +22,9 @@ export class SearchRequestError extends Error {
 function toSearchParams(filters: DiscogsSearchFilters): URLSearchParams {
   const params = new URLSearchParams();
   const entries: [string, unknown][] = [
-    ["q", filters.q],
-    ["type", filters.type],
     ["country", filters.country],
     ["year", filters.year],
     ["genre", filters.genre],
-    ["style", filters.style],
     ["page", filters.page],
     ["per_page", filters.per_page],
   ];

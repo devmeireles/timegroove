@@ -2,14 +2,9 @@
 
 import { useId } from "react";
 
-import type {
-  DiscogsEntityType,
-  DiscogsSearchFilters,
-} from "@/types/discogs";
-import { DISCOGS_ENTITY_TYPES } from "@/types/discogs";
+import type { DiscogsSearchFilters } from "@/types/discogs";
 
 import { FilterField } from "./FilterField";
-import { SegmentedSelect } from "./SegmentedSelect";
 import { TextInput } from "./TextInput";
 
 interface FilterPanelProps {
@@ -20,12 +15,6 @@ interface FilterPanelProps {
   isLoading: boolean;
 }
 
-const TYPE_OPTIONS: readonly { value: DiscogsEntityType; label: string }[] =
-  DISCOGS_ENTITY_TYPES.map((value) => ({
-    value,
-    label: value,
-  }));
-
 export function FilterPanel({
   values,
   onChange,
@@ -34,11 +23,9 @@ export function FilterPanel({
   isLoading,
 }: FilterPanelProps) {
   const ids = {
-    q: useId(),
-    year: useId(),
     country: useId(),
+    year: useId(),
     genre: useId(),
-    style: useId(),
   };
 
   const update = <K extends keyof DiscogsSearchFilters>(
@@ -64,20 +51,20 @@ export function FilterPanel({
           A music time capsule.
         </p>
         <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.18em] text-(--color-foreground-subtle)">
-          Dig the archive by place &amp; year
+          Pick a place, a year, a sound
         </p>
       </header>
 
       <div className="border-t border-(--color-border)" />
 
       <div className="flex flex-1 flex-col gap-5 overflow-y-auto px-5 py-5">
-        <FilterField label="Query" htmlFor={ids.q} hint="Optional free text">
+        <FilterField label="Country" htmlFor={ids.country} hint="e.g. Brazil, Japan, US">
           <TextInput
-            id={ids.q}
-            placeholder="e.g. Tropicália, Sun Ra…"
-            value={values.q ?? ""}
+            id={ids.country}
+            placeholder="Brazil"
+            value={values.country ?? ""}
             onChange={(event) =>
-              update("q", event.target.value || undefined)
+              update("country", event.target.value || undefined)
             }
           />
         </FilterField>
@@ -95,18 +82,7 @@ export function FilterPanel({
           />
         </FilterField>
 
-        <FilterField label="Country" htmlFor={ids.country} hint="e.g. Brazil, Japan, US">
-          <TextInput
-            id={ids.country}
-            placeholder="Brazil"
-            value={values.country ?? ""}
-            onChange={(event) =>
-              update("country", event.target.value || undefined)
-            }
-          />
-        </FilterField>
-
-        <FilterField label="Genre" htmlFor={ids.genre} hint="e.g. Jazz, Funk / Soul">
+        <FilterField label="Genre" htmlFor={ids.genre} hint="e.g. Jazz, Funk / Soul, Rock">
           <TextInput
             id={ids.genre}
             placeholder="Jazz"
@@ -114,26 +90,6 @@ export function FilterPanel({
             onChange={(event) =>
               update("genre", event.target.value || undefined)
             }
-          />
-        </FilterField>
-
-        <FilterField label="Style" htmlFor={ids.style} hint="e.g. Bossa Nova, Post-Punk">
-          <TextInput
-            id={ids.style}
-            placeholder="Bossa Nova"
-            value={values.style ?? ""}
-            onChange={(event) =>
-              update("style", event.target.value || undefined)
-            }
-          />
-        </FilterField>
-
-        <FilterField label="Type">
-          <SegmentedSelect<DiscogsEntityType>
-            name="type"
-            value={values.type ?? "release"}
-            options={TYPE_OPTIONS}
-            onChange={(value) => update("type", value)}
           />
         </FilterField>
       </div>

@@ -1,18 +1,21 @@
-import type {
-  DiscogsEntityType,
-  DiscogsSearchFilters,
-} from "@/types/discogs";
-import { DISCOGS_ENTITY_TYPES } from "@/types/discogs";
+import type { DiscogsSearchFilters } from "@/types/discogs";
 
 const MAX_PER_PAGE = 100;
 const DEFAULT_PER_PAGE = 50;
 
-function isEntityType(value: unknown): value is DiscogsEntityType {
-  return (
-    typeof value === "string" &&
-    (DISCOGS_ENTITY_TYPES as readonly string[]).includes(value)
-  );
-}
+/**
+ * The time-capsule app queries masters, not releases.
+ *
+ * `release.country` = pressing country of a physical record, which surfaces
+ * imports and licensed reissues (e.g. an American funk LP pressed in Japan
+ * for the local market shows up under country=Japan).
+ *
+ * `master.country` = country of the *first* release of the album, which is a
+ * much stronger proxy for "this album originated here." Same trade for year:
+ * master.year is the original release year, not the year of a specific
+ * pressing. Tradeoff: many masters have null country and are excluded.
+ */
+export const SEARCH_TYPE = "master" as const;
 
 function clampPerPage(input: unknown): number {
   const n = Number(input);
@@ -41,23 +44,19 @@ function pickString(input: unknown): string | undefined {
 export function parseFiltersFromSearchParams(
   params: URLSearchParams,
 ): DiscogsSearchFilters {
-  const typeRaw = params.get("type");
-  const filters: DiscogsSearchFilters = {
-    q: pickString(params.get("q")),
-    type: isEntityType(typeRaw) ? typeRaw : undefined,
+  return {
     country: pickString(params.get("country")),
     year: pickString(params.get("year")),
     genre: pickString(params.get("genre")),
-    style: pickString(params.get("style")),
     page: clampPage(params.get("page") ?? 1),
     per_page: clampPerPage(params.get("per_page") ?? DEFAULT_PER_PAGE),
   };
-  return filters;
 }
 
 /**
  * Build the upstream Discogs URL. Only non-empty filters are appended; this
- * keeps generated URLs stable and cache-friendly.
+ * keeps generated URLs stable and cache-friendly. `type` is always `release`
+ * — see SEARCH_TYPE above for the rationale.
  */
 export function buildDiscogsSearchUrl(
   baseUrl: string,
@@ -71,12 +70,10 @@ export function buildDiscogsSearchUrl(
     url.searchParams.set(key, str);
   };
 
-  append("q", filters.q);
-  append("type", filters.type);
+  append("type", SEARCH_TYPE);
   append("country", filters.country);
   append("year", filters.year);
   append("genre", filters.genre);
-  append("style", filters.style);
   append("page", filters.page);
   append("per_page", filters.per_page);
 

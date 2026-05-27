@@ -88,15 +88,15 @@ function EmptyState() {
   return (
     <div className="flex h-full flex-col items-start justify-center gap-3 font-mono text-sm text-(--color-foreground-muted)">
       <p className="text-(--color-foreground-subtle)">
-        {"// Pick a year, country, genre or style."}
+        {"// Pick a country, a year, a genre."}
       </p>
       <p className="text-(--color-foreground-subtle)">
         {"// Try "}
-        <span className="text-(--color-accent)">Brazil 1993</span>
+        <span className="text-(--color-accent)">Brazil · 1993</span>
         {", "}
-        <span className="text-(--color-accent)">Japan 1985 jazz</span>
+        <span className="text-(--color-accent)">Japan · 1985 · Jazz</span>
         {", or "}
-        <span className="text-(--color-accent)">USA 1977 punk</span>.
+        <span className="text-(--color-accent)">US · 1977 · Rock</span>.
       </p>
     </div>
   );

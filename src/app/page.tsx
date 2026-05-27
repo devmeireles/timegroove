@@ -15,7 +15,6 @@ import type {
 } from "@/types/discogs";
 
 const INITIAL_FILTERS: DiscogsSearchFilters = {
-  type: "release",
   per_page: 25,
   page: 1,
 };

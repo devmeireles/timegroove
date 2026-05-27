@@ -5,22 +5,19 @@
  * frontend never has to think about Discogs's inconsistencies.
  */
 
+/**
+ * Discogs supports release/master/artist/label, but the time-capsule premise
+ * (records pressed in country X during year Y) only makes sense for physical
+ * releases — masters are country-agnostic, artists/labels aren't listenable.
+ * The server locks the search to `release`; the type is kept here for
+ * downstream normalization and future entity-detail endpoints.
+ */
 export type DiscogsEntityType = "release" | "master" | "artist" | "label";
 
-export const DISCOGS_ENTITY_TYPES: readonly DiscogsEntityType[] = [
-  "release",
-  "master",
-  "artist",
-  "label",
-] as const;
-
 export interface DiscogsSearchFilters {
-  q?: string;
-  type?: DiscogsEntityType;
   country?: string;
   year?: string;
   genre?: string;
-  style?: string;
   page?: number;
   per_page?: number;
 }
