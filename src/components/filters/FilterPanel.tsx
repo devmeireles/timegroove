@@ -42,8 +42,16 @@ export function FilterPanel({
         event.preventDefault();
         onSubmit();
       }}
-      className="flex items-end justify-center gap-6 px-6 py-4"
+      className="flex items-end gap-6 px-6 py-3"
     >
+      <div className="flex shrink-0 items-end pb-2">
+        <span className="font-mono text-[11px] uppercase tracking-[0.32em] text-(--color-accent)">
+          Time&nbsp;Groove
+        </span>
+      </div>
+
+      <div className="h-9 w-px shrink-0 self-end bg-(--color-border)" />
+
       <div className="w-28 shrink-0">
         <FilterField label="Year" htmlFor={yearId}>
           <TextInput
@@ -64,10 +72,12 @@ export function FilterPanel({
           <GenreCombobox
             value={currentGenre}
             onChange={(next) => update("genre", next ?? undefined)}
-            placement="top"
+            placement="bottom"
           />
         </FilterField>
       </div>
+
+      <div className="flex-1" />
 
       <div className="flex shrink-0 items-center gap-2 pb-px">
         <button

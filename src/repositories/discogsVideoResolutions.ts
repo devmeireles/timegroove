@@ -43,6 +43,30 @@ export function findVideoResolution(
   return row ? rowToResolution(row) : null;
 }
 
+/**
+ * Read the cached raw_payload as the structured JSON it was written as.
+ * Used by the album-detail flow to reuse the same cache row as video
+ * resolution (which writes the full Discogs detail there). Returns null
+ * when the row is missing or the payload isn't parseable.
+ */
+export function findEntityRawPayload(
+  discogsId: number,
+  discogsType: "release" | "master",
+): unknown | null {
+  const db = getDatabase();
+  const row = db
+    .prepare<[number, string], { raw_payload: string | null }>(
+      `SELECT raw_payload FROM discogs_video_resolutions WHERE discogs_id = ? AND discogs_type = ?`,
+    )
+    .get(discogsId, discogsType);
+  if (!row?.raw_payload) return null;
+  try {
+    return JSON.parse(row.raw_payload);
+  } catch {
+    return null;
+  }
+}
+
 export interface SaveVideoResolutionInput {
   discogsId: number;
   discogsType: "release" | "master";

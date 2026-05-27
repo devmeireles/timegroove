@@ -1,11 +1,17 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
+import { AlbumDetailDialog } from "@/components/details/AlbumDetailDialog";
+import { ReconcileLoadingState } from "@/components/results/ReconcileLoadingState";
 import { ReleaseCard } from "@/components/results/ReleaseCard";
+import { useYoutubePlayerContext } from "@/contexts/YoutubePlayerContext";
 import { useReconcile, type ReconcileState } from "@/hooks/useReconcile";
-import { useYoutubePlayer } from "@/hooks/useYoutubePlayer";
-import type { NormalizedSearchResponse } from "@/types/discogs";
+import type {
+  NormalizedRelease,
+  NormalizedSearchResponse,
+} from "@/types/discogs";
+import type { EnrichedSpotify } from "@/types/reconciliation";
 
 interface ReleaseListProps {
   data: NormalizedSearchResponse;
@@ -16,15 +22,30 @@ function sortKey(state: ReconcileState | undefined): number {
   return 0;
 }
 
+function isResolved(state: ReconcileState | undefined): boolean {
+  return state !== undefined && state.status !== "loading";
+}
+
 export function ReleaseList({ data }: ReleaseListProps) {
   const enrichment = useReconcile(data.results);
-  const {
-    containerRef,
-    loadedKey,
-    isPlaying,
-    resolveStatus,
-    playRelease,
-  } = useYoutubePlayer();
+  const { loadedRelease, isPlaying, resolveStatus, playRelease } =
+    useYoutubePlayerContext();
+  const [detailItem, setDetailItem] = useState<{
+    release: NormalizedRelease;
+    spotify: EnrichedSpotify | null;
+  } | null>(null);
+
+  const { allReconciled, resolved, total } = useMemo(() => {
+    let count = 0;
+    for (const release of data.results) {
+      if (isResolved(enrichment.get(release.id))) count += 1;
+    }
+    return {
+      allReconciled: count === data.results.length,
+      resolved: count,
+      total: data.results.length,
+    };
+  }, [data.results, enrichment]);
 
   const sorted = useMemo(() => {
     return data.results
@@ -45,6 +66,12 @@ export function ReleaseList({ data }: ReleaseListProps) {
     );
   }
 
+  // Hold the cards until every row has either matched or failed-to-match.
+  // Keeps the list from re-sorting/flashing as reconciliations land.
+  if (!allReconciled) {
+    return <ReconcileLoadingState resolved={resolved} total={total} />;
+  }
+
   return (
     <div className="flex h-full flex-col">
       <div className="flex flex-1 flex-col gap-3 overflow-y-auto px-4 py-4">
@@ -52,36 +79,38 @@ export function ReleaseList({ data }: ReleaseListProps) {
           const discogsType: "release" | "master" =
             release.type === "master" ? "master" : "release";
           const key = `${discogsType}-${release.id}`;
+          const reconcileState = enrichment.get(release.id);
+          const enrichedSpotify =
+            reconcileState && "enriched" in reconcileState
+              ? reconcileState.enriched.spotify
+              : null;
+          const isLoaded =
+            loadedRelease != null &&
+            loadedRelease.id === release.id &&
+            (loadedRelease.type === "master" ? "master" : "release") ===
+              discogsType;
           return (
             <ReleaseCard
-              key={`${release.type}-${release.id}`}
+              key={key}
               release={release}
-              state={enrichment.get(release.id)}
-              isLoaded={loadedKey === key}
+              state={reconcileState}
+              isLoaded={isLoaded}
               isPlaying={isPlaying}
               resolveStatus={resolveStatus.get(key)}
               onPlay={() =>
-                playRelease({ discogsId: release.id, discogsType })
+                playRelease({ release, spotify: enrichedSpotify })
+              }
+              onOpenDetail={() =>
+                setDetailItem({ release, spotify: enrichedSpotify })
               }
             />
           );
         })}
       </div>
-
-      {/* Hidden host for the YouTube iframe. Positioned off-screen — the
-          iframe still loads and the IFrame API can play audio because YouTube
-          sets the right `allow` attributes on its iframe. */}
-      <div
-        ref={containerRef}
-        className="pointer-events-none fixed"
-        style={{
-          left: -9999,
-          top: 0,
-          width: 320,
-          height: 180,
-          opacity: 0,
-        }}
-        aria-hidden="true"
+      <AlbumDetailDialog
+        release={detailItem?.release ?? null}
+        spotify={detailItem?.spotify ?? null}
+        onClose={() => setDetailItem(null)}
       />
     </div>
   );

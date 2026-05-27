@@ -54,23 +54,16 @@ textarea::placeholder {
   color: var(--color-foreground-subtle);
 }
 
-/* JSON viewer token classes. */
-.tg-json-key {
-  color: var(--color-accent);
+/* Outward-expanding ring pulse used by the reconciliation loading state.
+ * Two offset instances stack to read as a radar sweep. */
+@keyframes tgScan {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
 }
-.tg-json-string {
-  color: #a3d39c;
-}
-.tg-json-number {
-  color: #e0b97d;
-}
-.tg-json-boolean {
-  color: #c792ea;
-}
-.tg-json-null {
-  color: var(--color-foreground-subtle);
-  font-style: italic;
-}
-.tg-json-punctuation {
-  color: var(--color-foreground-muted);
-}
+

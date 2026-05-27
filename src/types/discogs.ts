@@ -97,3 +97,43 @@ export interface DiscogsApiError {
   error: string;
   status: number;
 }
+
+/**
+ * One row in a release's tracklist. `type` is usually "track" but can be
+ * "heading" (a side label like "Side A") or "index" (a sub-listing). We
+ * keep heading rows in the array so the UI can render section breaks.
+ */
+export interface NormalizedTrack {
+  position: string;
+  title: string;
+  duration: string;
+  type: string;
+}
+
+/**
+ * Full release/master detail used by the album detail dialog. Built from
+ * Discogs's `/releases/:id` and `/masters/:id` endpoints, then cached in
+ * SQLite alongside the YouTube video id.
+ */
+export interface NormalizedDiscogsDetail {
+  id: number;
+  discogsType: "release" | "master";
+  title: string;
+  artists: Array<{ name: string }>;
+  year: number | null;
+  released: string | null;
+  country: string | null;
+  notes: string | null;
+  labels: Array<{ name: string; catno: string | null }>;
+  formats: Array<{ name: string; descriptions: string[] }>;
+  genres: string[];
+  styles: string[];
+  tracklist: NormalizedTrack[];
+  community: {
+    have: number;
+    want: number;
+    rating: number | null;
+  } | null;
+  images: Array<{ uri: string; type: string | null }>;
+  discogsUrl: string | null;
+}

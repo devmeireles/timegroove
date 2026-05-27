@@ -16,6 +16,8 @@ interface ReleaseCardProps {
   /** Lookup status for this card's YouTube video. Undefined = never tried. */
   resolveStatus: ResolveStatus | undefined;
   onPlay: () => void;
+  /** Opens the album detail dialog. Cover + title + metadata are clickable. */
+  onOpenDetail: () => void;
 }
 
 export function ReleaseCard({
@@ -25,6 +27,7 @@ export function ReleaseCard({
   isPlaying,
   resolveStatus,
   onPlay,
+  onOpenDetail,
 }: ReleaseCardProps) {
   const { artist, album } = splitDiscogsTitle(release.title ?? "");
   const spotify =
@@ -34,32 +37,43 @@ export function ReleaseCard({
     release.coverImage ??
     release.thumb ??
     null;
+  const displayTitle = album || release.title || "Untitled";
 
   return (
-    <article className="flex items-stretch gap-4 rounded-sm border border-(--color-border) bg-(--color-surface) p-3 transition-colors hover:border-(--color-border-strong)">
-      <Cover url={coverUrl} title={album || release.title || "release"} />
+    <article className="flex items-stretch gap-2 rounded-sm border border-(--color-border) bg-(--color-surface) p-3 transition-colors hover:border-(--color-border-strong)">
+      <button
+        type="button"
+        onClick={onOpenDetail}
+        aria-label={`View details for ${displayTitle}`}
+        className="-m-1 flex min-w-0 flex-1 cursor-pointer items-stretch gap-4 rounded-sm p-1 text-left transition-colors hover:bg-surface-elevated/50 focus:outline-none focus-visible:bg-surface-elevated/60"
+      >
+        <Cover url={coverUrl} title={displayTitle} />
 
-      <div className="flex min-w-0 flex-1 flex-col justify-between gap-2">
-        <header className="min-w-0">
-          <h3 className="truncate text-sm text-(--color-foreground)">
-            {album || release.title || "Untitled"}
-          </h3>
-          <p className="truncate font-mono text-[11px] text-(--color-foreground-muted)">
-            {artist ?? "Unknown artist"}
-            {release.year ? ` · ${release.year}` : ""}
-            {release.country ? ` · ${release.country}` : ""}
-          </p>
-        </header>
+        <span className="flex min-w-0 flex-1 flex-col justify-between gap-2">
+          <span className="block min-w-0">
+            <span className="block truncate text-sm text-(--color-foreground)">
+              {displayTitle}
+            </span>
+            <span className="block truncate font-mono text-[11px] text-(--color-foreground-muted)">
+              {artist ?? "Unknown artist"}
+              {release.year ? ` · ${release.year}` : ""}
+              {release.country ? ` · ${release.country}` : ""}
+            </span>
+          </span>
 
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[10px] uppercase tracking-[0.12em] text-(--color-foreground-subtle)">
-          {release.genre.length > 0 ? <Chips items={release.genre} /> : null}
-          {release.style.length > 0 ? (
-            <Chips items={release.style} muted />
-          ) : null}
-        </div>
-      </div>
+          <span className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[10px] uppercase tracking-[0.12em] text-(--color-foreground-subtle)">
+            {release.genre.length > 0 ? <Chips items={release.genre} /> : null}
+            {release.style.length > 0 ? (
+              <Chips items={release.style} muted />
+            ) : null}
+          </span>
+        </span>
+      </button>
 
-      <div className="flex shrink-0 flex-col items-end justify-center">
+      <div
+        className="flex shrink-0 flex-col items-end justify-center gap-2 pl-2"
+        onClick={(event) => event.stopPropagation()}
+      >
         <PlayButton
           state={state}
           isLoaded={isLoaded}
@@ -67,8 +81,46 @@ export function ReleaseCard({
           resolveStatus={resolveStatus}
           onPlay={onPlay}
         />
+        {spotify?.externalUrl ? (
+          <SpotifyLink url={spotify.externalUrl} />
+        ) : null}
       </div>
     </article>
+  );
+}
+
+function SpotifyLink({ url }: { url: string }) {
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noreferrer"
+      className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.18em] text-(--color-foreground-subtle) transition-colors hover:text-(--color-accent)"
+      title="Open album on Spotify"
+    >
+      <span>spotify</span>
+      <ExternalLinkIcon />
+    </a>
+  );
+}
+
+function ExternalLinkIcon() {
+  return (
+    <svg
+      width="10"
+      height="10"
+      viewBox="0 0 12 12"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M5 2 H2 V10 H10 V7" />
+      <path d="M7 2 H10 V5" />
+      <path d="M10 2 L5.5 6.5" />
+    </svg>
   );
 }
 
@@ -141,29 +193,39 @@ function PlayButton({
 
   if (resolveStatus === "no-video") {
     return (
-      <button
-        type="button"
-        disabled
-        className="flex h-9 w-9 items-center justify-center rounded-full border border-(--color-border) text-(--color-foreground-subtle) opacity-40"
-        aria-label="No video available"
-        title="Discogs has no playable video for this release"
-      >
-        <PlayIcon />
-      </button>
+      <div className="flex flex-col items-end gap-1">
+        <button
+          type="button"
+          disabled
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-dashed border-(--color-border-strong) text-(--color-foreground-subtle)"
+          aria-label="No video available"
+          title="Discogs has no playable video for this release"
+        >
+          <UnavailableIcon />
+        </button>
+        <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-(--color-foreground-subtle)">
+          Resource not available
+        </span>
+      </div>
     );
   }
 
   if (resolveStatus === "error") {
     return (
-      <button
-        type="button"
-        onClick={onPlay}
-        className="flex h-9 w-9 items-center justify-center rounded-full border border-red-900/60 text-red-400 transition-colors hover:border-red-700"
-        aria-label="Retry"
-        title="Lookup failed — click to retry"
-      >
-        <PlayIcon />
-      </button>
+      <div className="flex flex-col items-end gap-1">
+        <button
+          type="button"
+          onClick={onPlay}
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-red-900/70 bg-red-950/30 text-red-400 transition-colors hover:border-red-700 hover:bg-red-950/50"
+          aria-label="Retry"
+          title="Lookup failed — click to retry"
+        >
+          <RetryIcon />
+        </button>
+        <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-red-400">
+          retry
+        </span>
+      </div>
     );
   }
 
@@ -194,6 +256,49 @@ function PlayIcon() {
   return (
     <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
       <path d="M3 2 L10 6 L3 10 Z" fill="currentColor" />
+    </svg>
+  );
+}
+
+function UnavailableIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+      <path d="M4 3 L11 7 L4 11 Z" fill="currentColor" opacity="0.35" />
+      <line
+        x1="2"
+        y1="12"
+        x2="12"
+        y2="2"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function RetryIcon() {
+  return (
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 13 13"
+      aria-hidden="true"
+      fill="none"
+    >
+      <path
+        d="M11 6.5 A4.5 4.5 0 1 1 6.5 2"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+      />
+      <path
+        d="M6.5 0.5 L6.5 3.5 L9.5 3.5"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }

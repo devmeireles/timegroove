@@ -53,13 +53,12 @@ export async function resolveYoutubeFromDiscogs(
     return { videoId: cached.youtubeVideoId, cached: true };
   }
 
-  let videos: DiscogsVideoEntry[] | undefined;
+  let detail: Awaited<ReturnType<typeof getReleaseDetail>> | null = null;
   try {
-    const detail =
+    detail =
       discogsType === "master"
         ? await getMasterDetail(discogsId, { signal })
         : await getReleaseDetail(discogsId, { signal });
-    videos = detail.videos;
   } catch (err) {
     // Don't poison the cache on transient Discogs failures; return null
     // without persisting so the next click retries.
@@ -69,13 +68,15 @@ export async function resolveYoutubeFromDiscogs(
     throw err;
   }
 
-  const videoId = firstYoutubeVideoId(videos);
+  const videoId = firstYoutubeVideoId(detail.videos);
 
+  // Cache the entire detail payload (not just `videos`) so the album-detail
+  // dialog can reuse this row without an extra Discogs API call.
   saveVideoResolution({
     discogsId,
     discogsType,
     youtubeVideoId: videoId,
-    rawPayload: { videos: videos ?? [] },
+    rawPayload: detail,
   });
 
   return { videoId, cached: false };

@@ -4,6 +4,8 @@ import { useCallback, useRef, useState } from "react";
 
 import { FilterPanel } from "@/components/filters/FilterPanel";
 import { MainPane } from "@/components/layout/MainPane";
+import { NowPlayingPane } from "@/components/results/NowPlayingPane";
+import { YoutubePlayerProvider } from "@/contexts/YoutubePlayerContext";
 import {
   SearchRequestError,
   searchReleases,
@@ -18,6 +20,17 @@ const INITIAL_FILTERS: DiscogsSearchFilters = {
   page: 1,
 };
 
+/**
+ * Country-only searches against the Discogs catalog (no year, no genre) can
+ * surface tens of thousands of releases for big music nations. Cap them
+ * tighter to keep reconciliation costs in check and the queue legible.
+ * Once the user narrows by year or genre, we open the result set back up.
+ */
+function effectivePerPage(filters: DiscogsSearchFilters): number {
+  const hasNarrowingFilter = Boolean(filters.year || filters.genre);
+  return hasNarrowingFilter ? 25 : 10;
+}
+
 export default function HomePage() {
   const [filters, setFilters] =
     useState<DiscogsSearchFilters>(INITIAL_FILTERS);
@@ -28,7 +41,11 @@ export default function HomePage() {
 
   const inflight = useRef<AbortController | null>(null);
 
-  const runSearch = useCallback(async (next: DiscogsSearchFilters) => {
+  const runSearch = useCallback(async (raw: DiscogsSearchFilters) => {
+    const next: DiscogsSearchFilters = {
+      ...raw,
+      per_page: effectivePerPage(raw),
+    };
     inflight.current?.abort();
     const controller = new AbortController();
     inflight.current = controller;
@@ -83,26 +100,28 @@ export default function HomePage() {
   );
 
   return (
-    <div className="flex h-screen w-screen flex-col overflow-hidden">
-      <main className="min-h-0 flex-1 overflow-hidden">
-        <MainPane
-          data={data}
-          isLoading={isLoading}
-          error={error}
-          lastQuery={lastQuery}
-          selectedCountry={filters.country ?? null}
-          onSelectCountry={handleSelectCountry}
-        />
-      </main>
-      <div className="shrink-0 border-t border-(--color-border) bg-(--color-surface)">
-        <FilterPanel
-          values={filters}
-          onChange={setFilters}
-          onSubmit={handleSubmit}
-          onReset={handleReset}
-          isLoading={isLoading}
-        />
+    <YoutubePlayerProvider>
+      <div className="flex h-screen w-screen flex-col overflow-hidden">
+        <div className="shrink-0 border-b border-(--color-border) bg-(--color-surface)">
+          <FilterPanel
+            values={filters}
+            onChange={setFilters}
+            onSubmit={handleSubmit}
+            onReset={handleReset}
+            isLoading={isLoading}
+          />
+        </div>
+        <main className="min-h-0 flex-1 overflow-hidden">
+          <MainPane
+            data={data}
+            error={error}
+            lastQuery={lastQuery}
+            selectedCountry={filters.country ?? null}
+            onSelectCountry={handleSelectCountry}
+          />
+        </main>
+        <NowPlayingPane />
       </div>
-    </div>
+    </YoutubePlayerProvider>
   );
 }

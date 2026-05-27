@@ -2,21 +2,20 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import type { NormalizedRelease } from "@/types/discogs";
+import type { EnrichedSpotify } from "@/types/reconciliation";
+
 /**
  * Hidden YouTube IFrame Player.
  *
- * Why this works where Spotify embeds don't: the YouTube IFrame API creates
- * the iframe with `allow="autoplay; encrypted-media; ..."` baked in, so
+ * Why YouTube embeds (and not Spotify): YouTube's IFrame API creates the
+ * iframe with `allow="autoplay; encrypted-media; ..."` baked in, so
  * `player.playVideo()` actually produces sound when called inside a parent-
- * page user gesture. Spotify's iframe does not.
+ * page user gesture. Spotify's iframe does not, which is why a hidden
+ * Spotify embed silently failed.
  *
- * Resolution flow per click:
- *   release.id  → /api/discogs/video  → youtube videoId | null
- *                 (server caches in SQLite)
- *
- * The hook exposes a per-release state map so cards can render a loading
- * spinner during resolution and a "no video" hint when Discogs has nothing
- * playable for that row.
+ * The hook stores the *full* loaded release (not just an id) so a
+ * "now playing" UI can render artwork/title/artist without an extra lookup.
  */
 
 interface YTPlayer {
@@ -46,14 +45,6 @@ interface YTApi {
       };
     },
   ) => YTPlayer;
-  PlayerState: {
-    UNSTARTED: -1;
-    ENDED: 0;
-    PLAYING: 1;
-    PAUSED: 2;
-    BUFFERING: 3;
-    CUED: 5;
-  };
 }
 
 declare global {
@@ -113,24 +104,33 @@ async function resolveVideoId(
 }
 
 export interface PlayReleaseInput {
-  discogsId: number;
-  discogsType: "release" | "master";
+  release: NormalizedRelease;
+  spotify: EnrichedSpotify | null;
 }
 
 export type ResolveStatus = "resolving" | "no-video" | "ready" | "error";
 
 export interface UseYoutubePlayer {
   containerRef: React.RefObject<HTMLDivElement | null>;
-  /** Key of the currently-loaded release in the player ("master-123"). */
-  loadedKey: string | null;
+  /** Currently-loaded release, or null when nothing is loaded. */
+  loadedRelease: NormalizedRelease | null;
+  /** Spotify metadata for the loaded release — used for cover art etc. */
+  loadedSpotify: EnrichedSpotify | null;
   isPlaying: boolean;
   /** Per-release resolution status — undefined means never attempted. */
   resolveStatus: Map<string, ResolveStatus>;
   playRelease: (input: PlayReleaseInput) => void;
+  /** Toggle play/pause on the currently-loaded release. No-op when nothing
+   * is loaded. */
+  togglePlay: () => void;
+  /** Pause the player and clear `loadedRelease` so the now-playing UI
+   * unmounts. */
+  stop: () => void;
 }
 
-function makeKey(input: PlayReleaseInput): string {
-  return `${input.discogsType}-${input.discogsId}`;
+function releaseKey(release: NormalizedRelease): string {
+  const type = release.type === "master" ? "master" : "release";
+  return `${type}-${release.id}`;
 }
 
 export function useYoutubePlayer(): UseYoutubePlayer {
@@ -138,13 +138,16 @@ export function useYoutubePlayer(): UseYoutubePlayer {
   const playerRef = useRef<YTPlayer | null>(null);
   const initPromiseRef = useRef<Promise<YTPlayer> | null>(null);
 
-  const [loadedKey, setLoadedKey] = useState<string | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [resolveStatus, setResolveStatus] = useState<Map<string, ResolveStatus>>(
-    new Map(),
+  const [loadedRelease, setLoadedRelease] = useState<NormalizedRelease | null>(
+    null,
   );
+  const [loadedSpotify, setLoadedSpotify] =
+    useState<EnrichedSpotify | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [resolveStatus, setResolveStatus] = useState<
+    Map<string, ResolveStatus>
+  >(new Map());
 
-  // Cancel in-flight resolves + tear down the player on unmount.
   const inFlightRef = useRef<AbortController | null>(null);
   useEffect(() => {
     return () => {
@@ -206,18 +209,17 @@ export function useYoutubePlayer(): UseYoutubePlayer {
   );
 
   const playRelease = useCallback(
-    async (input: PlayReleaseInput) => {
-      const key = makeKey(input);
+    async ({ release, spotify }: PlayReleaseInput) => {
+      const key = releaseKey(release);
+      const currentKey = loadedRelease ? releaseKey(loadedRelease) : null;
 
-      // Toggle if the same release is already loaded. (Closure capture is
-      // safe here: the read happens synchronously before any await.)
-      if (loadedKey === key && playerRef.current) {
+      // Toggle if the same release is already loaded.
+      if (currentKey === key && playerRef.current) {
         if (isPlaying) playerRef.current.pauseVideo();
         else playerRef.current.playVideo();
         return;
       }
 
-      // Mark resolving + cancel any other in-flight resolve.
       inFlightRef.current?.abort();
       const controller = new AbortController();
       inFlightRef.current = controller;
@@ -227,11 +229,14 @@ export function useYoutubePlayer(): UseYoutubePlayer {
         return next;
       });
 
+      const discogsType: "release" | "master" =
+        release.type === "master" ? "master" : "release";
+
       let videoId: string | null;
       try {
         videoId = await resolveVideoId(
-          input.discogsId,
-          input.discogsType,
+          release.id,
+          discogsType,
           controller.signal,
         );
       } catch (err) {
@@ -267,10 +272,12 @@ export function useYoutubePlayer(): UseYoutubePlayer {
         if (controller.signal.aborted) return;
         if (firstLoad) {
           // Auto-play already triggered in onReady.
-          setLoadedKey(key);
+          setLoadedRelease(release);
+          setLoadedSpotify(spotify);
         } else {
           player.loadVideoById(videoId);
-          setLoadedKey(key);
+          setLoadedRelease(release);
+          setLoadedSpotify(spotify);
         }
       } catch (err) {
         console.error("YouTube player error:", err);
@@ -281,14 +288,36 @@ export function useYoutubePlayer(): UseYoutubePlayer {
         });
       }
     },
-    [ensurePlayer, loadedKey, isPlaying],
+    [ensurePlayer, loadedRelease, isPlaying],
   );
+
+  const togglePlay = useCallback(() => {
+    if (!playerRef.current || !loadedRelease) return;
+    if (isPlaying) playerRef.current.pauseVideo();
+    else playerRef.current.playVideo();
+  }, [loadedRelease, isPlaying]);
+
+  const stop = useCallback(() => {
+    if (playerRef.current) {
+      try {
+        playerRef.current.pauseVideo();
+      } catch {
+        // Player may have torn down; safe to ignore.
+      }
+    }
+    setLoadedRelease(null);
+    setLoadedSpotify(null);
+    setIsPlaying(false);
+  }, []);
 
   return {
     containerRef,
-    loadedKey,
+    loadedRelease,
+    loadedSpotify,
     isPlaying,
     resolveStatus,
     playRelease,
+    togglePlay,
+    stop,
   };
 }
