@@ -54,6 +54,13 @@ textarea::placeholder {
   color: var(--color-foreground-subtle);
 }
 
+/* Browsers default <button> to cursor: default. For our interactive
+ * controls we want the affordance to read as clickable. Disabled buttons
+ * keep the UA default (typically not-allowed). */
+button:not(:disabled) {
+  cursor: pointer;
+}
+
 /* Outward-expanding ring pulse used by the reconciliation loading state.
  * Two offset instances stack to read as a radar sweep. */
 @keyframes tgScan {

@@ -47,6 +47,15 @@ CREATE TABLE IF NOT EXISTS discogs_video_resolutions (
 );
 
 CREATE INDEX IF NOT EXISTS idx_video_resolved_at ON discogs_video_resolutions(resolved_at);
+
+CREATE TABLE IF NOT EXISTS discogs_artist_details (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  artist_id    INTEGER NOT NULL UNIQUE,
+  raw_payload  TEXT    NOT NULL,
+  fetched_at   TEXT    NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_artist_fetched_at ON discogs_artist_details(fetched_at);
 `;
 
 let cached: Client | null = null;

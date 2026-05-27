@@ -1,5 +1,6 @@
 export {
   DiscogsApiError,
+  getArtistDetail,
   getMasterDetail,
   getReleaseDetail,
   searchDiscogs,

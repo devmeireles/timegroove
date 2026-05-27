@@ -101,3 +101,16 @@ export async function getMasterDetail(
   const url = new URL(`/masters/${id}`, serverEnv.discogs.baseUrl).toString();
   return discogsFetch<DiscogsEntityDetail>(url, options);
 }
+
+/**
+ * Fetch an artist's full detail payload (bio in `profile`, photos in
+ * `images`, external links in `urls`). Loose-typed because Discogs's
+ * artist response is shape-rich and we only consume a subset.
+ */
+export async function getArtistDetail(
+  id: number,
+  options?: FetchOptions,
+): Promise<Record<string, unknown>> {
+  const url = new URL(`/artists/${id}`, serverEnv.discogs.baseUrl).toString();
+  return discogsFetch<Record<string, unknown>>(url, options);
+}

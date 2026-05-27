@@ -3,13 +3,11 @@
 import { useEffect, useState } from "react";
 
 import { Dialog } from "@/components/details/Dialog";
+import { fetchDiscogsArtist } from "@/lib/clientArtist";
 import { fetchDiscogsDetail } from "@/lib/clientDetail";
 import { splitDiscogsTitle } from "@/lib/text/normalize";
-import {
-  fetchWikipediaSummary,
-  type WikipediaSummary,
-} from "@/lib/wikipedia";
 import type {
+  NormalizedArtistDetail,
   NormalizedDiscogsDetail,
   NormalizedRelease,
   NormalizedTrack,
@@ -29,10 +27,10 @@ type DetailState =
   | { kind: "ready"; detail: NormalizedDiscogsDetail }
   | { kind: "error"; message: string };
 
-type WikiState =
+type ArtistState =
   | { kind: "idle" }
   | { kind: "loading" }
-  | { kind: "ready"; summary: WikipediaSummary }
+  | { kind: "ready"; artist: NormalizedArtistDetail }
   | { kind: "missing" };
 
 export function AlbumDetailDialog({
@@ -47,18 +45,18 @@ export function AlbumDetailDialog({
   const [state, setState] = useState<{
     key: NormalizedRelease | null;
     detail: DetailState;
-    wiki: WikiState;
+    artist: ArtistState;
   }>(() => ({
     key: release,
     detail: { kind: "loading" },
-    wiki: { kind: "idle" },
+    artist: { kind: "idle" },
   }));
 
   if (state.key !== release) {
     setState({
       key: release,
       detail: { kind: "loading" },
-      wiki: { kind: "idle" },
+      artist: { kind: "idle" },
     });
   }
 
@@ -72,33 +70,31 @@ export function AlbumDetailDialog({
     fetchDiscogsDetail(release.id, type, controller.signal)
       .then((d) => {
         if (controller.signal.aborted) return;
+        const firstArtistId = d.artists[0]?.id;
         setState((prev) =>
           prev.key === release
-            ? { ...prev, detail: { kind: "ready", detail: d }, wiki: { kind: "loading" } }
+            ? {
+                ...prev,
+                detail: { kind: "ready", detail: d },
+                artist:
+                  firstArtistId != null
+                    ? { kind: "loading" }
+                    : { kind: "missing" },
+              }
             : prev,
         );
 
-        // Once we have a clean artist+title from Discogs detail, query
-        // Wikipedia. The combined string is more reliable than the
-        // search-row "Artist - Album" parse.
-        const artist = d.artists[0]?.name;
-        const title = d.title;
-        if (!artist || !title) {
-          setState((prev) =>
-            prev.key === release ? { ...prev, wiki: { kind: "missing" } } : prev,
-          );
-          return;
-        }
+        if (firstArtistId == null) return;
 
-        fetchWikipediaSummary(`${artist} ${title}`, controller.signal)
-          .then((summary) => {
+        fetchDiscogsArtist(firstArtistId, controller.signal)
+          .then((artist) => {
             if (controller.signal.aborted) return;
             setState((prev) =>
               prev.key === release
                 ? {
                     ...prev,
-                    wiki: summary
-                      ? { kind: "ready", summary }
+                    artist: artist.profile
+                      ? { kind: "ready", artist }
                       : { kind: "missing" },
                   }
                 : prev,
@@ -108,7 +104,7 @@ export function AlbumDetailDialog({
             if (controller.signal.aborted) return;
             setState((prev) =>
               prev.key === release
-                ? { ...prev, wiki: { kind: "missing" } }
+                ? { ...prev, artist: { kind: "missing" } }
                 : prev,
             );
           });
@@ -127,7 +123,7 @@ export function AlbumDetailDialog({
   }, [release]);
 
   const detail = state.detail;
-  const wiki = state.wiki;
+  const artistState = state.artist;
 
   return (
     <Dialog
@@ -140,7 +136,7 @@ export function AlbumDetailDialog({
           release={release}
           spotify={spotify}
           detail={detail}
-          wiki={wiki}
+          artistState={artistState}
           onClose={onClose}
         />
       ) : null}
@@ -152,13 +148,13 @@ function DialogBody({
   release,
   spotify,
   detail,
-  wiki,
+  artistState,
   onClose,
 }: {
   release: NormalizedRelease;
   spotify: EnrichedSpotify | null;
   detail: DetailState;
-  wiki: WikiState;
+  artistState: ArtistState;
   onClose: () => void;
 }) {
   const fallbackParsed = splitDiscogsTitle(release.title ?? "");
@@ -256,9 +252,9 @@ function DialogBody({
           </div>
         </section>
 
-        {wiki.kind === "missing" ? null : (
-          <Section title="Historical context">
-            <ContextBlock wiki={wiki} />
+        {artistState.kind === "missing" ? null : (
+          <Section title="About this artist">
+            <ArtistBlock state={artistState} />
           </Section>
         )}
 
@@ -369,40 +365,54 @@ function Section({
   );
 }
 
-function ContextBlock({ wiki }: { wiki: WikiState }) {
+function ArtistBlock({ state }: { state: ArtistState }) {
   // "missing" is filtered out by the caller — the whole section is hidden
   // instead of rendering a "not found" placeholder.
-  if (wiki.kind !== "ready") {
+  if (state.kind !== "ready") {
     return (
       <p className="font-mono text-[11px] text-(--color-foreground-subtle)">
-        {"// fetching context…"}
+        {"// loading artist…"}
       </p>
     );
   }
-  const { summary } = wiki;
+  const { artist } = state;
+  const photoUrl =
+    artist.images.find((img) => img.type === "primary")?.uri ??
+    artist.images[0]?.uri ??
+    null;
   return (
-    <div className="flex gap-4">
-      {summary.thumbnail ? (
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+      {photoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={summary.thumbnail.url}
-          alt=""
+          src={photoUrl}
+          alt={artist.name}
           loading="lazy"
-          className="h-20 w-20 shrink-0 rounded-sm border border-(--color-border) object-cover"
+          className="h-28 w-28 shrink-0 rounded-sm border border-(--color-border) object-cover"
         />
       ) : null}
       <div className="min-w-0 flex-1">
-        <p className="text-[13px] leading-relaxed text-(--color-foreground-muted)">
-          {summary.extract}
+        {artist.realName ? (
+          <p className="mb-2 font-mono text-[11px] text-(--color-foreground-subtle)">
+            Real name ·{" "}
+            <span className="text-(--color-foreground-muted)">
+              {artist.realName}
+            </span>
+          </p>
+        ) : null}
+        <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-(--color-foreground-muted)">
+          {artist.profile}
         </p>
-        <a
-          href={summary.url}
-          target="_blank"
-          rel="noreferrer"
-          className="mt-2 inline-block font-mono text-[10px] uppercase tracking-[0.18em] text-(--color-foreground-subtle) transition-colors hover:text-(--color-accent)"
-        >
-          wikipedia ↗
-        </a>
+        {artist.discogsUrl ? (
+          <a
+            href={artist.discogsUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-3 inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.18em] text-(--color-foreground-subtle) transition-colors hover:text-(--color-accent)"
+          >
+            continue on discogs ↗
+          </a>
+        ) : null}
       </div>
     </div>
   );

@@ -5,6 +5,7 @@ import type {
   NormalizedRelease,
   NormalizedSearchResponse,
 } from "@/types/discogs";
+import { buildDiscogsUrl } from "./url";
 
 function asStringArray(value: unknown): string[] {
   if (Array.isArray(value)) {
@@ -46,7 +47,7 @@ export function normalizeResult(raw: DiscogsRawResult): NormalizedRelease {
     format: asStringArray(raw.format),
     thumb: asStringOrNull(raw.thumb),
     coverImage: asStringOrNull(raw.cover_image),
-    discogsUrl: raw.uri ? `https://www.discogs.com${raw.uri}` : null,
+    discogsUrl: buildDiscogsUrl(raw.uri),
     masterId: asNumberOrNull(raw.master_id),
     catno: asStringOrNull(raw.catno),
   };

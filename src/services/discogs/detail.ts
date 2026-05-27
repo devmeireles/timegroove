@@ -10,6 +10,7 @@ import type {
   NormalizedTrack,
 } from "@/types/discogs";
 import { getMasterDetail, getReleaseDetail } from "./client";
+import { buildDiscogsUrl } from "./url";
 
 /**
  * Cache-first fetcher for the full Discogs entity detail.
@@ -93,14 +94,19 @@ function asStringArray(value: unknown): string[] {
   return value.filter((v): v is string => typeof v === "string");
 }
 
-function normalizeArtists(value: unknown): Array<{ name: string }> {
+function normalizeArtists(
+  value: unknown,
+): Array<{ id: number; name: string }> {
   if (!Array.isArray(value)) return [];
   return value
     .map((entry) => {
-      const name = asString((entry as { name?: unknown })?.name);
-      return name ? { name } : null;
+      const e = entry as { id?: unknown; name?: unknown };
+      const name = asString(e.name);
+      const id = typeof e.id === "number" && Number.isFinite(e.id) ? e.id : null;
+      if (!name || id == null) return null;
+      return { id, name };
     })
-    .filter((v): v is { name: string } => v !== null);
+    .filter((v): v is { id: number; name: string } => v !== null);
 }
 
 function normalizeLabels(
@@ -194,7 +200,6 @@ function normalizeDetail(
   discogsType: "release" | "master",
 ): NormalizedDiscogsDetail {
   const r = raw as Record<string, unknown>;
-  const uri = asString(r.uri);
   return {
     id: typeof r.id === "number" ? r.id : 0,
     discogsType,
@@ -211,6 +216,6 @@ function normalizeDetail(
     tracklist: normalizeTracklist(r.tracklist),
     community: normalizeCommunity(r.community),
     images: normalizeImages(r.images),
-    discogsUrl: uri ? `https://www.discogs.com${uri}` : null,
+    discogsUrl: buildDiscogsUrl(asString(r.uri)),
   };
 }

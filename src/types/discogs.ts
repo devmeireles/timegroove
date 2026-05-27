@@ -119,7 +119,7 @@ export interface NormalizedDiscogsDetail {
   id: number;
   discogsType: "release" | "master";
   title: string;
-  artists: Array<{ name: string }>;
+  artists: Array<{ id: number; name: string }>;
   year: number | null;
   released: string | null;
   country: string | null;
@@ -135,5 +135,21 @@ export interface NormalizedDiscogsDetail {
     rating: number | null;
   } | null;
   images: Array<{ uri: string; type: string | null }>;
+  discogsUrl: string | null;
+}
+
+/**
+ * Discogs artist endpoint payload, normalized for the album detail dialog.
+ * `profile` carries the community-curated biography (with Discogs's BBCode-
+ * like markup already stripped). External links live in `urls`.
+ */
+export interface NormalizedArtistDetail {
+  id: number;
+  name: string;
+  realName: string | null;
+  profile: string | null;
+  images: Array<{ uri: string; type: string | null }>;
+  urls: string[];
+  nameVariations: string[];
   discogsUrl: string | null;
 }

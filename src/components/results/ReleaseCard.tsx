@@ -61,12 +61,7 @@ export function ReleaseCard({
             </span>
           </span>
 
-          <span className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[10px] uppercase tracking-[0.12em] text-(--color-foreground-subtle)">
-            {release.genre.length > 0 ? <Chips items={release.genre} /> : null}
-            {release.style.length > 0 ? (
-              <Chips items={release.style} muted />
-            ) : null}
-          </span>
+          <TagLine genres={release.genre} styles={release.style} />
         </span>
       </button>
 
@@ -143,20 +138,31 @@ function Cover({ url, title }: { url: string | null; title: string }) {
   );
 }
 
-function Chips({ items, muted = false }: { items: string[]; muted?: boolean }) {
+/**
+ * Bordered tag chips. Genres get a sharper border + brighter text; styles
+ * sit one notch quieter. Long values (e.g. "Folk, World, & Country") stay
+ * on their own chip and wrap inside it via `break-words` rather than
+ * stretching the row — keeps the flex-wrap layout balanced.
+ */
+function TagLine({ genres, styles }: { genres: string[]; styles: string[] }) {
+  const items = [
+    ...genres.slice(0, 2).map((text) => ({ text, kind: "genre" as const })),
+    ...styles.slice(0, 3).map((text) => ({ text, kind: "style" as const })),
+  ];
+  if (items.length === 0) return null;
   return (
-    <div className="flex flex-wrap gap-1">
-      {items.slice(0, 4).map((item) => (
+    <div className="flex flex-wrap gap-1 font-mono text-[10px] uppercase tracking-[0.12em]">
+      {items.map((item, i) => (
         <span
-          key={item}
+          key={`${item.kind}-${item.text}-${i}`}
           className={
-            "rounded-xs border px-1.5 py-0.5 " +
-            (muted
-              ? "border-(--color-border) text-(--color-foreground-subtle)"
-              : "border-(--color-border-strong) text-(--color-foreground-muted)")
+            "rounded-xs border px-1.5 py-0.5 break-words " +
+            (item.kind === "genre"
+              ? "border-(--color-border-strong) text-(--color-foreground-muted)"
+              : "border-(--color-border) text-(--color-foreground-subtle)")
           }
         >
-          {item}
+          {item.text}
         </span>
       ))}
     </div>
@@ -204,7 +210,7 @@ function PlayButton({
           <UnavailableIcon />
         </button>
         <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-(--color-foreground-subtle)">
-          Resource not available
+          Unavailable
         </span>
       </div>
     );
