@@ -3,6 +3,11 @@
 import { useState } from "react";
 
 import { WorldMap } from "@/components/map/WorldMap";
+import {
+  PANEL_WIDTH_PX,
+  ReopenButton,
+  ResultsPanel,
+} from "@/components/results/ResultsPanel";
 import { ResultsPane } from "@/components/viewer/ResultsPane";
 import type {
   DiscogsSearchFilters,
@@ -10,6 +15,11 @@ import type {
 } from "@/types/discogs";
 
 type ViewMode = "map" | "json";
+
+const VIEW_LABEL: Record<ViewMode, string> = {
+  map: "Atlas",
+  json: "Response",
+};
 
 interface MainPaneProps {
   data: NormalizedSearchResponse | null;
@@ -30,6 +40,13 @@ export function MainPane({
 }: MainPaneProps) {
   const [mode, setMode] = useState<ViewMode>("map");
 
+  // Dismiss-per-response: storing the data identity the user dismissed for
+  // means a new search response automatically re-opens the panel without
+  // needing a setState-in-effect dance.
+  const [dismissedFor, setDismissedFor] =
+    useState<NormalizedSearchResponse | null>(null);
+  const panelOpen = data != null && dismissedFor !== data;
+
   return (
     <section className="flex h-full flex-1 flex-col bg-(--color-background)">
       <header className="flex shrink-0 items-center justify-between gap-4 border-b border-(--color-border) px-6 py-3">
@@ -40,7 +57,7 @@ export function MainPane({
           <div className="h-5 w-px bg-(--color-border)" />
           <div className="min-w-0">
             <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-(--color-foreground-subtle)">
-              {mode === "map" ? "Atlas" : "Response"}
+              {VIEW_LABEL[mode]}
             </p>
             <p
               className="mt-0.5 truncate font-mono text-[11px] text-(--color-foreground-muted)"
@@ -68,11 +85,28 @@ export function MainPane({
 
       <div className="relative flex-1 overflow-hidden">
         {mode === "map" ? (
-          <div className="h-full w-full overflow-hidden">
+          <div className="relative h-full w-full overflow-hidden">
             <WorldMap
               selectedCountry={selectedCountry}
               onSelectCountry={onSelectCountry}
+              rightInset={panelOpen ? PANEL_WIDTH_PX : 0}
             />
+
+            {data && panelOpen ? (
+              <ResultsPanel
+                data={data}
+                query={lastQuery}
+                onClose={() => setDismissedFor(data)}
+              />
+            ) : null}
+
+            {data && !panelOpen ? (
+              <ReopenButton
+                count={data.pagination.items}
+                onClick={() => setDismissedFor(null)}
+              />
+            ) : null}
+
             {error ? (
               <div className="absolute right-4 bottom-12 left-4 max-w-md">
                 <ErrorBanner message={error} />
@@ -81,11 +115,7 @@ export function MainPane({
           </div>
         ) : (
           <div className="h-full overflow-auto px-6 py-5">
-            <ResultsPane
-              data={data}
-              isLoading={isLoading}
-              error={error}
-            />
+            <ResultsPane data={data} isLoading={isLoading} error={error} />
           </div>
         )}
       </div>

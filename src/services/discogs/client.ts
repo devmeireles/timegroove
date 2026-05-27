@@ -63,3 +63,41 @@ export async function searchDiscogs(
   const raw = await discogsFetch<DiscogsRawSearchResponse>(url, options);
   return normalizeSearchResponse(raw, filters);
 }
+
+/**
+ * Discogs video entry on a release/master detail payload. `uri` typically
+ * points at a YouTube watch URL but may also be Vimeo or other providers —
+ * callers should filter to what they can play.
+ */
+export interface DiscogsVideoEntry {
+  uri: string;
+  title?: string;
+  description?: string;
+  duration?: number;
+  embed?: boolean;
+}
+
+interface DiscogsEntityDetail {
+  id: number;
+  title?: string;
+  year?: number;
+  videos?: DiscogsVideoEntry[];
+}
+
+/** Fetch a release's full detail payload, including community-curated videos. */
+export async function getReleaseDetail(
+  id: number,
+  options?: FetchOptions,
+): Promise<DiscogsEntityDetail> {
+  const url = new URL(`/releases/${id}`, serverEnv.discogs.baseUrl).toString();
+  return discogsFetch<DiscogsEntityDetail>(url, options);
+}
+
+/** Fetch a master's full detail payload. */
+export async function getMasterDetail(
+  id: number,
+  options?: FetchOptions,
+): Promise<DiscogsEntityDetail> {
+  const url = new URL(`/masters/${id}`, serverEnv.discogs.baseUrl).toString();
+  return discogsFetch<DiscogsEntityDetail>(url, options);
+}

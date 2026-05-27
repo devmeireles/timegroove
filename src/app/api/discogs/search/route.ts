@@ -4,7 +4,7 @@ import {
   DiscogsApiError,
   parseFiltersFromSearchParams,
   searchDiscogs,
-} from "@/lib/services/discogs";
+} from "@/services/discogs";
 
 export async function GET(request: NextRequest) {
   const filters = parseFiltersFromSearchParams(request.nextUrl.searchParams);

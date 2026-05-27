@@ -20,6 +20,9 @@ interface WorldMapProps {
   selectedCountry: string | null;
   /** Fired when a country is clicked; receives the Discogs-formatted name. */
   onSelectCountry: (discogsName: string) => void;
+  /** Pixels of right-edge inset to leave clear for an overlay (e.g. results
+   * panel). Shifts the zoom controls and the bottom-right status line. */
+  rightInset?: number;
 }
 
 const GEO_URL = "/maps/countries-110m.json";
@@ -45,7 +48,11 @@ interface MapPosition {
   zoom: number;
 }
 
-export function WorldMap({ selectedCountry, onSelectCountry }: WorldMapProps) {
+export function WorldMap({
+  selectedCountry,
+  onSelectCountry,
+  rightInset = 0,
+}: WorldMapProps) {
   const [hovered, setHovered] = useState<string | null>(null);
   const [position, setPosition] = useState<MapPosition>({
     coordinates: INITIAL_CENTER,
@@ -178,16 +185,23 @@ export function WorldMap({ selectedCountry, onSelectCountry }: WorldMapProps) {
         onZoomIn={zoomIn}
         onZoomOut={zoomOut}
         onReset={zoomReset}
+        rightInset={rightInset}
       />
 
       {selectedCountry ? (
-        <div className="pointer-events-none absolute right-4 bottom-3 font-mono text-[10px] uppercase tracking-[0.18em]">
+        <div
+          className="pointer-events-none absolute bottom-3 font-mono text-[10px] uppercase tracking-[0.18em]"
+          style={{ right: 16 + rightInset }}
+        >
           <span className="text-(--color-foreground-subtle)">Selected</span>
           <span className="px-2 text-(--color-border-strong)">/</span>
           <span className="text-(--color-accent)">{selectedCountry}</span>
         </div>
       ) : (
-        <div className="pointer-events-none absolute right-4 bottom-3 font-mono text-[10px] uppercase tracking-[0.18em] text-(--color-foreground-subtle)">
+        <div
+          className="pointer-events-none absolute bottom-3 font-mono text-[10px] uppercase tracking-[0.18em] text-(--color-foreground-subtle)"
+          style={{ right: 16 + rightInset }}
+        >
           Click a country to dig · drag to pan · scroll to zoom
         </div>
       )}
@@ -200,6 +214,7 @@ interface ZoomControlsProps {
   onZoomIn: () => void;
   onZoomOut: () => void;
   onReset: () => void;
+  rightInset?: number;
 }
 
 function ZoomControls({
@@ -207,9 +222,13 @@ function ZoomControls({
   onZoomIn,
   onZoomOut,
   onReset,
+  rightInset = 0,
 }: ZoomControlsProps) {
   return (
-    <div className="absolute top-3 right-3 flex flex-col gap-1">
+    <div
+      className="absolute top-3 flex flex-col gap-1"
+      style={{ right: 12 + rightInset }}
+    >
       <ZoomButton
         label="Zoom in"
         onClick={onZoomIn}

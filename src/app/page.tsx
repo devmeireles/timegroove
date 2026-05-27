@@ -7,7 +7,7 @@ import { MainPane } from "@/components/layout/MainPane";
 import {
   SearchRequestError,
   searchReleases,
-} from "@/lib/services/discogs/clientApi";
+} from "@/services/discogs/clientApi";
 import type {
   DiscogsSearchFilters,
   NormalizedSearchResponse,

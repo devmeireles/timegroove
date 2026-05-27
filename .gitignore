@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# sqlite reconciliation cache
+/time-groove.db
+/time-groove.db-journal
+/time-groove.db-wal
+/time-groove.db-shm

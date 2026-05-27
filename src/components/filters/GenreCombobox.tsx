@@ -93,7 +93,7 @@ export function GenreCombobox({
     <div ref={containerRef} className="relative">
       <div
         className={
-          "flex w-full items-center gap-2 rounded-sm border bg-(--color-surface) px-2.5 py-1.5 transition-colors duration-150 " +
+          "flex w-full items-center rounded-sm border bg-(--color-surface) px-2.5 py-1.5 transition-colors duration-150 " +
           (open
             ? "border-(--color-accent-muted) ring-1 ring-(--color-accent-muted)"
             : "border-(--color-border) hover:border-(--color-border-strong)")

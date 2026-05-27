@@ -31,4 +31,17 @@ export const serverEnv = {
       "TimeGrooveExplorer/0.1 (+https://example.local)",
     ),
   },
+  spotify: {
+    baseUrl: readOptional("SPOTIFY_API_BASE_URL", "https://api.spotify.com"),
+    authUrl: readOptional(
+      "SPOTIFY_AUTH_URL",
+      "https://accounts.spotify.com/api/token",
+    ),
+    get clientId() {
+      return readRequired("SPOTIFY_CLIENT_ID");
+    },
+    get clientSecret() {
+      return readRequired("SPOTIFY_CLIENT_SECRET");
+    },
+  },
 } as const;
