@@ -40,6 +40,8 @@ export function ReleaseList({
 }: ReleaseListProps) {
   const pageSize = Math.max(1, data.query.per_page || 10);
   const enrichment = useReconcile(data.results);
+  const [favoriteKeys, setFavoriteKeys] = useState<Set<string>>(new Set());
+  const [favoritePending, setFavoritePending] = useState<Set<string>>(new Set());
   const {
     containerRef: _ignoredContainer,
     loadedRelease,
@@ -52,6 +54,90 @@ export function ReleaseList({
     release: NormalizedRelease;
     spotify: EnrichedSpotify | null;
   } | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    async function loadFavorites() {
+      try {
+        const response = await fetch("/api/favorites", {
+          signal: controller.signal,
+          cache: "no-store",
+        });
+        if (!response.ok) {
+          setFavoriteKeys(new Set());
+          return;
+        }
+        const data = (await response.json()) as {
+          favorites?: Array<{ discogsId: number; discogsType: "release" | "master" }>;
+        };
+        const next = new Set<string>();
+        for (const item of data.favorites ?? []) {
+          next.add(`${item.discogsType}:${item.discogsId}`);
+        }
+        setFavoriteKeys(next);
+      } catch {
+        setFavoriteKeys(new Set());
+      }
+    }
+    void loadFavorites();
+    return () => controller.abort();
+  }, []);
+
+  const toggleFavorite = useCallback(async (release: NormalizedRelease) => {
+    const discogsType: "release" | "master" =
+      release.type === "master" ? "master" : "release";
+    const key = `${discogsType}:${release.id}`;
+    if (favoritePending.has(key)) return;
+
+    const currentlyFavorite = favoriteKeys.has(key);
+    setFavoritePending((prev) => new Set(prev).add(key));
+    setFavoriteKeys((prev) => {
+      const next = new Set(prev);
+      if (currentlyFavorite) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+
+    try {
+      const response = currentlyFavorite
+        ? await fetch(
+            `/api/favorites?discogsId=${release.id}&discogsType=${discogsType}`,
+            { method: "DELETE" },
+          )
+        : await fetch("/api/favorites", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ release }),
+          });
+
+      if (response.status === 401) {
+        window.location.href = "/auth/login";
+        return;
+      }
+
+      if (!response.ok) {
+        setFavoriteKeys((prev) => {
+          const next = new Set(prev);
+          if (currentlyFavorite) next.add(key);
+          else next.delete(key);
+          return next;
+        });
+      }
+    } catch {
+      setFavoriteKeys((prev) => {
+        const next = new Set(prev);
+        if (currentlyFavorite) next.add(key);
+        else next.delete(key);
+        return next;
+      });
+    } finally {
+      setFavoritePending((prev) => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+    }
+  }, [favoriteKeys, favoritePending]);
 
   const { allReconciled, resolved, total } = useMemo(() => {
     let count = 0;
@@ -177,6 +263,9 @@ export function ReleaseList({
               state={reconcileState}
               isLoaded={isLoaded}
               isPlaying={isPlaying}
+              isFavorite={favoriteKeys.has(`${discogsType}:${release.id}`)}
+              isFavoritePending={favoritePending.has(`${discogsType}:${release.id}`)}
+              onToggleFavorite={() => toggleFavorite(release)}
               resolveStatus={resolveStatus.get(key)}
               onPlay={() =>
                 playRelease({ release, spotify: enrichedSpotify })

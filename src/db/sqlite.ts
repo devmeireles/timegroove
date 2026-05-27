@@ -56,6 +56,37 @@ CREATE TABLE IF NOT EXISTS discogs_artist_details (
 );
 
 CREATE INDEX IF NOT EXISTS idx_artist_fetched_at ON discogs_artist_details(fetched_at);
+
+CREATE TABLE IF NOT EXISTS app_users (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  auth0_sub    TEXT    NOT NULL UNIQUE,
+  email        TEXT,
+  display_name TEXT,
+  avatar_url   TEXT,
+  created_at   TEXT    NOT NULL,
+  updated_at   TEXT    NOT NULL,
+  last_seen_at TEXT    NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_app_users_email ON app_users(email);
+CREATE INDEX IF NOT EXISTS idx_app_users_last_seen ON app_users(last_seen_at);
+
+CREATE TABLE IF NOT EXISTS app_user_favorites (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id       INTEGER NOT NULL,
+  discogs_id    INTEGER NOT NULL,
+  discogs_type  TEXT    NOT NULL CHECK(discogs_type IN ('release','master')),
+  release_title TEXT,
+  release_year  INTEGER,
+  release_country TEXT,
+  cover_url     TEXT,
+  created_at    TEXT    NOT NULL,
+  UNIQUE(user_id, discogs_id, discogs_type),
+  FOREIGN KEY(user_id) REFERENCES app_users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_favorites_user ON app_user_favorites(user_id);
+CREATE INDEX IF NOT EXISTS idx_favorites_created ON app_user_favorites(created_at);
 `;
 
 let cached: Client | null = null;

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Pause, Play, X } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Heart, LoaderCircle, Pause, Play, X } from "lucide-react";
 
 import { CoverArt } from "@/components/common/CoverArt";
 import { AlbumDetailDialog } from "@/components/details/AlbumDetailDialog";
@@ -19,6 +19,95 @@ export function NowPlayingPane() {
   const { loadedRelease, loadedSpotify, isPlaying, togglePlay, stop } =
     useYoutubePlayerContext();
   const [detailOpen, setDetailOpen] = useState(false);
+  const [favoriteKeys, setFavoriteKeys] = useState<Set<string>>(new Set());
+  const [favoritePending, setFavoritePending] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    const controller = new AbortController();
+    async function loadFavorites() {
+      try {
+        const response = await fetch("/api/favorites", {
+          signal: controller.signal,
+          cache: "no-store",
+        });
+        if (!response.ok) {
+          setFavoriteKeys(new Set());
+          return;
+        }
+        const data = (await response.json()) as {
+          favorites?: Array<{ discogsId: number; discogsType: "release" | "master" }>;
+        };
+        const next = new Set<string>();
+        for (const item of data.favorites ?? []) {
+          next.add(`${item.discogsType}:${item.discogsId}`);
+        }
+        setFavoriteKeys(next);
+      } catch {
+        setFavoriteKeys(new Set());
+      }
+    }
+    void loadFavorites();
+    return () => controller.abort();
+  }, []);
+
+  const discogsType: "release" | "master" =
+    loadedRelease?.type === "master" ? "master" : "release";
+  const favoriteKey = loadedRelease ? `${discogsType}:${loadedRelease.id}` : "";
+  const isFavorite = favoriteKeys.has(favoriteKey);
+  const isFavoritePending = favoritePending.has(favoriteKey);
+
+  const toggleFavorite = useCallback(async () => {
+    if (!loadedRelease || favoritePending.has(favoriteKey)) return;
+
+    const currentlyFavorite = favoriteKeys.has(favoriteKey);
+    setFavoritePending((prev) => new Set(prev).add(favoriteKey));
+    setFavoriteKeys((prev) => {
+      const next = new Set(prev);
+      if (currentlyFavorite) next.delete(favoriteKey);
+      else next.add(favoriteKey);
+      return next;
+    });
+
+    try {
+      const response = currentlyFavorite
+        ? await fetch(
+            `/api/favorites?discogsId=${loadedRelease.id}&discogsType=${discogsType}`,
+            { method: "DELETE" },
+          )
+        : await fetch("/api/favorites", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ release: loadedRelease }),
+          });
+
+      if (response.status === 401) {
+        window.location.href = "/auth/login";
+        return;
+      }
+
+      if (!response.ok) {
+        setFavoriteKeys((prev) => {
+          const next = new Set(prev);
+          if (currentlyFavorite) next.add(favoriteKey);
+          else next.delete(favoriteKey);
+          return next;
+        });
+      }
+    } catch {
+      setFavoriteKeys((prev) => {
+        const next = new Set(prev);
+        if (currentlyFavorite) next.add(favoriteKey);
+        else next.delete(favoriteKey);
+        return next;
+      });
+    } finally {
+      setFavoritePending((prev) => {
+        const next = new Set(prev);
+        next.delete(favoriteKey);
+        return next;
+      });
+    }
+  }, [discogsType, favoriteKey, favoriteKeys, favoritePending, loadedRelease]);
 
   if (!loadedRelease) return null;
 
@@ -66,6 +155,11 @@ export function NowPlayingPane() {
 
         <div className="flex shrink-0 items-center gap-2">
           <PlayPauseButton isPlaying={isPlaying} onToggle={togglePlay} />
+          <FavoriteButton
+            isFavorite={isFavorite}
+            isPending={isFavoritePending}
+            onToggle={toggleFavorite}
+          />
           <CloseButton onClick={stop} />
         </div>
       </div>
@@ -75,6 +169,43 @@ export function NowPlayingPane() {
         onClose={() => setDetailOpen(false)}
       />
     </div>
+  );
+}
+
+function FavoriteButton({
+  isFavorite,
+  isPending,
+  onToggle,
+}: {
+  isFavorite: boolean;
+  isPending: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      disabled={isPending}
+      className={
+        "flex h-8 w-8 items-center justify-center rounded-full border transition-colors " +
+        (isFavorite
+          ? "border-pink-500/60 bg-pink-500/20 text-pink-400"
+          : "border-(--color-border) text-(--color-foreground-subtle) hover:border-(--color-border-strong) hover:text-(--color-foreground)") +
+        (isPending ? " opacity-60" : "")
+      }
+      aria-label={isFavorite ? "Remove favorite" : "Add favorite"}
+      title={isFavorite ? "Remove from favorites" : "Add to favorites"}
+    >
+      {isPending ? (
+        <LoaderCircle size={12} aria-hidden="true" className="animate-spin" />
+      ) : (
+        <Heart
+          size={12}
+          aria-hidden="true"
+          fill={isFavorite ? "currentColor" : "none"}
+        />
+      )}
+    </button>
   );
 }
 

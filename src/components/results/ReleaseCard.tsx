@@ -3,6 +3,7 @@
 import {
   AlertCircle,
   ExternalLink,
+  Heart,
   LoaderCircle,
   Pause,
   Play,
@@ -25,6 +26,9 @@ interface ReleaseCardProps {
   isPlaying: boolean;
   /** Lookup status for this card's YouTube video. Undefined = never tried. */
   resolveStatus: ResolveStatus | undefined;
+  isFavorite: boolean;
+  isFavoritePending: boolean;
+  onToggleFavorite: () => void;
   onPlay: () => void;
   /** Opens the album detail dialog. Cover + title + metadata are clickable. */
   onOpenDetail: () => void;
@@ -36,6 +40,9 @@ export function ReleaseCard({
   isLoaded,
   isPlaying,
   resolveStatus,
+  isFavorite,
+  isFavoritePending,
+  onToggleFavorite,
   onPlay,
   onOpenDetail,
 }: ReleaseCardProps) {
@@ -48,9 +55,20 @@ export function ReleaseCard({
     release.thumb ??
     null;
   const displayTitle = album || release.title || "Untitled";
+  const isCurrentRelease = isLoaded;
+  const isCurrentAndPlaying = isLoaded && isPlaying;
 
   return (
-    <article className="flex items-stretch gap-2 rounded-sm border border-(--color-border) bg-(--color-surface) p-3 transition-colors hover:border-(--color-border-strong)">
+    <article
+      className={
+        "flex items-stretch gap-2 rounded-sm border bg-(--color-surface) p-3 transition-colors " +
+        (isCurrentAndPlaying
+          ? "border-(--color-accent) ring-1 ring-accent/45"
+          : isCurrentRelease
+            ? "border-(--color-accent-muted)"
+            : "border-(--color-border) hover:border-(--color-border-strong)")
+      }
+    >
       <button
         type="button"
         onClick={onOpenDetail}
@@ -84,6 +102,11 @@ export function ReleaseCard({
         className="flex shrink-0 flex-col items-end justify-center gap-2 pl-2"
         onClick={(event) => event.stopPropagation()}
       >
+        <FavoriteButton
+          isFavorite={isFavorite}
+          isPending={isFavoritePending}
+          onToggle={onToggleFavorite}
+        />
         <PlayButton
           state={state}
           isLoaded={isLoaded}
@@ -96,6 +119,43 @@ export function ReleaseCard({
         ) : null}
       </div>
     </article>
+  );
+}
+
+function FavoriteButton({
+  isFavorite,
+  isPending,
+  onToggle,
+}: {
+  isFavorite: boolean;
+  isPending: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      disabled={isPending}
+      className={
+        "flex h-8 w-8 items-center justify-center rounded-full border transition-colors " +
+        (isFavorite
+          ? "border-pink-500/60 bg-pink-500/20 text-pink-400"
+          : "border-(--color-border) text-(--color-foreground-subtle) hover:border-(--color-border-strong) hover:text-(--color-foreground)") +
+        (isPending ? " opacity-60" : "")
+      }
+      aria-label={isFavorite ? "Remove favorite" : "Add favorite"}
+      title={isFavorite ? "Remove from favorites" : "Add to favorites"}
+    >
+      {isPending ? (
+        <LoaderCircle size={12} aria-hidden="true" className="animate-spin" />
+      ) : (
+        <Heart
+          size={12}
+          aria-hidden="true"
+          fill={isFavorite ? "currentColor" : "none"}
+        />
+      )}
+    </button>
   );
 }
 

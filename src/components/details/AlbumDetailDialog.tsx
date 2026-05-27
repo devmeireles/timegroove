@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { ExternalLink as ExternalLinkIcon, X } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { ExternalLink as ExternalLinkIcon, Heart, LoaderCircle, X } from "lucide-react";
 
 import { CoverArt } from "@/components/common/CoverArt";
 import { Dialog } from "@/components/details/Dialog";
@@ -159,6 +159,72 @@ function DialogBody({
   artistState: ArtistState;
   onClose: () => void;
 }) {
+  const discogsType: "release" | "master" =
+    release.type === "master" ? "master" : "release";
+  const favoriteKey = `${discogsType}:${release.id}`;
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [isFavoritePending, setIsFavoritePending] = useState(false);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    async function loadFavoriteState() {
+      try {
+        const response = await fetch("/api/favorites", {
+          signal: controller.signal,
+          cache: "no-store",
+        });
+        if (!response.ok) {
+          setIsFavorite(false);
+          return;
+        }
+        const data = (await response.json()) as {
+          favorites?: Array<{ discogsId: number; discogsType: "release" | "master" }>;
+        };
+        const match = (data.favorites ?? []).some(
+          (item) => item.discogsId === release.id && item.discogsType === discogsType,
+        );
+        setIsFavorite(match);
+      } catch {
+        setIsFavorite(false);
+      }
+    }
+    void loadFavoriteState();
+    return () => controller.abort();
+  }, [discogsType, favoriteKey, release.id]);
+
+  const toggleFavorite = useCallback(async () => {
+    if (isFavoritePending) return;
+    const currentlyFavorite = isFavorite;
+    setIsFavoritePending(true);
+    setIsFavorite(!currentlyFavorite);
+
+    try {
+      const response = currentlyFavorite
+        ? await fetch(
+            `/api/favorites?discogsId=${release.id}&discogsType=${discogsType}`,
+            { method: "DELETE" },
+          )
+        : await fetch("/api/favorites", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ release }),
+          });
+
+      if (response.status === 401) {
+        window.location.href = "/auth/login";
+        return;
+      }
+
+      if (!response.ok) {
+        setIsFavorite(currentlyFavorite);
+      }
+    } catch {
+      setIsFavorite(currentlyFavorite);
+    } finally {
+      setIsFavoritePending(false);
+    }
+  }, [discogsType, isFavorite, isFavoritePending, release]);
+
   const fallbackParsed = splitDiscogsTitle(release.title ?? "");
   const ready = detail.kind === "ready" ? detail.detail : null;
 
@@ -189,7 +255,14 @@ function DialogBody({
             {ready?.id ? ` · #${ready.id}` : ""}
           </p>
         </div>
-        <CloseButton onClick={onClose} />
+        <div className="flex items-center gap-2">
+          <FavoriteButton
+            isFavorite={isFavorite}
+            isPending={isFavoritePending}
+            onToggle={toggleFavorite}
+          />
+          <CloseButton onClick={onClose} />
+        </div>
       </header>
 
       <div className="flex-1 overflow-y-auto px-6 py-5">
@@ -314,6 +387,43 @@ function DialogBody({
         ) : null}
       </div>
     </div>
+  );
+}
+
+function FavoriteButton({
+  isFavorite,
+  isPending,
+  onToggle,
+}: {
+  isFavorite: boolean;
+  isPending: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      disabled={isPending}
+      className={
+        "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition-colors " +
+        (isFavorite
+          ? "border-pink-500/60 bg-pink-500/20 text-pink-400"
+          : "border-(--color-border) text-(--color-foreground-subtle) hover:border-(--color-border-strong) hover:text-(--color-foreground)") +
+        (isPending ? " opacity-60" : "")
+      }
+      aria-label={isFavorite ? "Remove favorite" : "Add favorite"}
+      title={isFavorite ? "Remove from favorites" : "Add to favorites"}
+    >
+      {isPending ? (
+        <LoaderCircle size={12} aria-hidden="true" className="animate-spin" />
+      ) : (
+        <Heart
+          size={12}
+          aria-hidden="true"
+          fill={isFavorite ? "currentColor" : "none"}
+        />
+      )}
+    </button>
   );
 }
 
