@@ -32,6 +32,8 @@ interface ReconcileInput {
   signal?: AbortSignal;
 }
 
+const inflightReconciliations = new Map<string, Promise<EnrichedRelease>>();
+
 /**
  * Public entry point. Returns an EnrichedRelease, either from cache or from
  * a freshly-scored Spotify match. The Discogs row is supplied by the caller
@@ -39,6 +41,24 @@ interface ReconcileInput {
  * round-trip the Discogs detail endpoint.
  */
 export async function reconcileRelease({
+  release,
+  signal,
+}: ReconcileInput): Promise<EnrichedRelease> {
+  const discogsType: "release" | "master" =
+    release.type === "master" ? "master" : "release";
+  const inflightKey = `${discogsType}:${release.id}`;
+
+  const existing = inflightReconciliations.get(inflightKey);
+  if (existing) return existing;
+
+  const work = reconcileReleaseInternal({ release, signal }).finally(() => {
+    inflightReconciliations.delete(inflightKey);
+  });
+  inflightReconciliations.set(inflightKey, work);
+  return work;
+}
+
+async function reconcileReleaseInternal({
   release,
   signal,
 }: ReconcileInput): Promise<EnrichedRelease> {

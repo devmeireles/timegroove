@@ -80,56 +80,100 @@ interface FetchOptions {
   revalidate?: number;
 }
 
+const MAX_RATE_LIMIT_RETRIES = 2;
+const DEFAULT_RETRY_AFTER_SECONDS = 1;
+
+function parseRetryAfterSeconds(value: string | null): number {
+  if (!value) return DEFAULT_RETRY_AFTER_SECONDS;
+  const asNumber = Number(value);
+  if (Number.isFinite(asNumber) && asNumber > 0) {
+    return Math.max(DEFAULT_RETRY_AFTER_SECONDS, asNumber);
+  }
+  const retryAt = Date.parse(value);
+  if (Number.isFinite(retryAt)) {
+    const seconds = Math.ceil((retryAt - Date.now()) / 1000);
+    return Math.max(DEFAULT_RETRY_AFTER_SECONDS, seconds);
+  }
+  return DEFAULT_RETRY_AFTER_SECONDS;
+}
+
+async function delayMs(ms: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function spotifyFetch<T>(
   pathAndQuery: string,
   { signal, revalidate = 86_400 }: FetchOptions = {},
 ): Promise<T> {
-  const token = await getAccessToken();
   const url = new URL(pathAndQuery, serverEnv.spotify.baseUrl);
 
-  const response = await fetch(url.toString(), {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: "application/json",
-    },
-    next: { revalidate },
-    signal,
-  });
-
-  if (response.status === 401) {
-    // Token may have expired between our leeway check and the upstream's
-    // clock; one-shot retry with a fresh token before bailing.
-    cachedToken = null;
-    const retryToken = await getAccessToken();
-    const retry = await fetch(url.toString(), {
+  for (let attempt = 0; attempt <= MAX_RATE_LIMIT_RETRIES; attempt += 1) {
+    const token = await getAccessToken();
+    const response = await fetch(url.toString(), {
       headers: {
-        Authorization: `Bearer ${retryToken}`,
+        Authorization: `Bearer ${token}`,
         Accept: "application/json",
       },
       next: { revalidate },
       signal,
     });
-    if (!retry.ok) {
-      const body = await retry.text().catch(() => "");
+
+    if (response.status === 429) {
+      if (attempt >= MAX_RATE_LIMIT_RETRIES) {
+        const body = await response.text().catch(() => "");
+        throw new SpotifyApiError(
+          `Spotify ${pathAndQuery} rate-limited after retries: ${response.status} ${response.statusText}`,
+          response.status,
+          body,
+        );
+      }
+      const retryAfter = parseRetryAfterSeconds(
+        response.headers.get("retry-after"),
+      );
+      await delayMs(retryAfter * 1000);
+      continue;
+    }
+
+    if (response.status === 401) {
+      // Token may have expired between our leeway check and the upstream's
+      // clock; one-shot retry with a fresh token before bailing.
+      cachedToken = null;
+      const retryToken = await getAccessToken();
+      const retry = await fetch(url.toString(), {
+        headers: {
+          Authorization: `Bearer ${retryToken}`,
+          Accept: "application/json",
+        },
+        next: { revalidate },
+        signal,
+      });
+      if (!retry.ok) {
+        const body = await retry.text().catch(() => "");
+        throw new SpotifyApiError(
+          `Spotify ${pathAndQuery} failed after token refresh: ${retry.status} ${retry.statusText}`,
+          retry.status,
+          body,
+        );
+      }
+      return (await retry.json()) as T;
+    }
+
+    if (!response.ok) {
+      const body = await response.text().catch(() => "");
       throw new SpotifyApiError(
-        `Spotify ${pathAndQuery} failed after token refresh: ${retry.status} ${retry.statusText}`,
-        retry.status,
+        `Spotify ${pathAndQuery} failed: ${response.status} ${response.statusText}`,
+        response.status,
         body,
       );
     }
-    return (await retry.json()) as T;
+
+    return (await response.json()) as T;
   }
 
-  if (!response.ok) {
-    const body = await response.text().catch(() => "");
-    throw new SpotifyApiError(
-      `Spotify ${pathAndQuery} failed: ${response.status} ${response.statusText}`,
-      response.status,
-      body,
-    );
-  }
-
-  return (await response.json()) as T;
+  throw new SpotifyApiError(
+    `Spotify ${pathAndQuery} failed after retries`,
+    429,
+  );
 }
 
 export interface SearchAlbumsParams {
