@@ -5,6 +5,7 @@ import { ExternalLink as ExternalLinkIcon, Heart, LoaderCircle, X } from "lucide
 
 import { CoverArt } from "@/components/common/CoverArt";
 import { Dialog } from "@/components/details/Dialog";
+import { PlaylistMenuButton } from "@/components/playlists/PlaylistMenuButton";
 import { fetchDiscogsArtist } from "@/lib/clientArtist";
 import { fetchDiscogsDetail } from "@/lib/clientDetail";
 import { splitDiscogsTitle } from "@/lib/text/normalize";
@@ -256,6 +257,7 @@ function DialogBody({
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <PlaylistMenuButton release={release} />
           <FavoriteButton
             isFavorite={isFavorite}
             isPending={isFavoritePending}

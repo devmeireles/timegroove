@@ -87,6 +87,36 @@ CREATE TABLE IF NOT EXISTS app_user_favorites (
 
 CREATE INDEX IF NOT EXISTS idx_favorites_user ON app_user_favorites(user_id);
 CREATE INDEX IF NOT EXISTS idx_favorites_created ON app_user_favorites(created_at);
+
+CREATE TABLE IF NOT EXISTS app_playlists (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id      INTEGER NOT NULL,
+  name         TEXT    NOT NULL,
+  created_at   TEXT    NOT NULL,
+  updated_at   TEXT    NOT NULL,
+  UNIQUE(user_id, name),
+  FOREIGN KEY(user_id) REFERENCES app_users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_playlists_user ON app_playlists(user_id);
+CREATE INDEX IF NOT EXISTS idx_playlists_updated ON app_playlists(updated_at);
+
+CREATE TABLE IF NOT EXISTS app_playlist_items (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  playlist_id     INTEGER NOT NULL,
+  discogs_id      INTEGER NOT NULL,
+  discogs_type    TEXT    NOT NULL CHECK(discogs_type IN ('release','master')),
+  release_title   TEXT,
+  release_year    INTEGER,
+  release_country TEXT,
+  cover_url       TEXT,
+  created_at      TEXT    NOT NULL,
+  UNIQUE(playlist_id, discogs_id, discogs_type),
+  FOREIGN KEY(playlist_id) REFERENCES app_playlists(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_playlist_items_playlist ON app_playlist_items(playlist_id);
+CREATE INDEX IF NOT EXISTS idx_playlist_items_discogs ON app_playlist_items(discogs_id, discogs_type);
 `;
 
 let cached: Client | null = null;

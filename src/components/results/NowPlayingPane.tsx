@@ -5,6 +5,7 @@ import { Heart, LoaderCircle, Pause, Play, X } from "lucide-react";
 
 import { CoverArt } from "@/components/common/CoverArt";
 import { AlbumDetailDialog } from "@/components/details/AlbumDetailDialog";
+import { PlaylistMenuButton } from "@/components/playlists/PlaylistMenuButton";
 import { useYoutubePlayerContext } from "@/contexts/YoutubePlayerContext";
 import { splitDiscogsTitle } from "@/lib/text/normalize";
 
@@ -160,6 +161,7 @@ export function NowPlayingPane() {
             isPending={isFavoritePending}
             onToggle={toggleFavorite}
           />
+          <PlaylistMenuButton release={loadedRelease} direction="up" />
           <CloseButton onClick={stop} />
         </div>
       </div>
