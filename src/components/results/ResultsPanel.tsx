@@ -10,6 +10,10 @@ interface ResultsPanelProps {
   data: NormalizedSearchResponse;
   query: DiscogsSearchFilters | null;
   onClose: () => void;
+  pagesLoaded: number;
+  hasMore: boolean;
+  isLoadingMore: boolean;
+  onLoadMore: () => void;
 }
 
 export const PANEL_WIDTH_PX = 400;
@@ -19,7 +23,18 @@ export const PANEL_WIDTH_PX = 400;
  * the map view rather than as its own surface so the user keeps the map
  * context while browsing results.
  */
-export function ResultsPanel({ data, query, onClose }: ResultsPanelProps) {
+export function ResultsPanel({
+  data,
+  query,
+  onClose,
+  pagesLoaded,
+  hasMore,
+  isLoadingMore,
+  onLoadMore,
+}: ResultsPanelProps) {
+  // Stable key on the search identity (not page number) so the list resets
+  // its reconciliation state on a fresh search but survives pagination.
+  const listKey = `${query?.country ?? ""}|${query?.year ?? ""}|${query?.genre ?? ""}`;
   return (
     <aside
       className="absolute top-0 right-0 bottom-0 z-10 flex flex-col border-l border-(--color-border) bg-surface/95 shadow-2xl backdrop-blur-md"
@@ -61,7 +76,14 @@ export function ResultsPanel({ data, query, onClose }: ResultsPanelProps) {
       </header>
 
       <div className="min-h-0 flex-1">
-        <ReleaseList data={data} />
+        <ReleaseList
+          key={listKey}
+          data={data}
+          pagesLoaded={pagesLoaded}
+          hasMore={hasMore}
+          isLoadingMore={isLoadingMore}
+          onLoadMore={onLoadMore}
+        />
       </div>
     </aside>
   );

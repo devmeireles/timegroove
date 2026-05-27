@@ -19,6 +19,13 @@ interface MainPaneProps {
   lastQuery: DiscogsSearchFilters | null;
   selectedCountry: string | null;
   onSelectCountry: (country: string) => void;
+  /** How many pages of results have been fetched so far (1 = just the
+   * initial page). Used by the list to decide whether to gate on the
+   * full-screen reconcile loader. */
+  pagesLoaded: number;
+  hasMore: boolean;
+  isLoadingMore: boolean;
+  onLoadMore: () => void;
 }
 
 /**
@@ -32,6 +39,10 @@ export function MainPane({
   lastQuery,
   selectedCountry,
   onSelectCountry,
+  pagesLoaded,
+  hasMore,
+  isLoadingMore,
+  onLoadMore,
 }: MainPaneProps) {
   // Dismiss-per-response: storing the data identity the user dismissed for
   // means a new search response automatically re-opens the panel.
@@ -52,6 +63,10 @@ export function MainPane({
           data={data}
           query={lastQuery}
           onClose={() => setDismissedFor(data)}
+          pagesLoaded={pagesLoaded}
+          hasMore={hasMore}
+          isLoadingMore={isLoadingMore}
+          onLoadMore={onLoadMore}
         />
       ) : null}
 

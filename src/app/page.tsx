@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 import { FilterPanel } from "@/components/filters/FilterPanel";
 import { MainPane } from "@/components/layout/MainPane";
@@ -11,7 +11,9 @@ import {
   searchReleases,
 } from "@/services/discogs/clientApi";
 import type {
+  DiscogsPagination,
   DiscogsSearchFilters,
+  NormalizedRelease,
   NormalizedSearchResponse,
 } from "@/types/discogs";
 
@@ -20,31 +22,40 @@ const INITIAL_FILTERS: DiscogsSearchFilters = {
   page: 1,
 };
 
-/**
- * Country-only searches against the Discogs catalog (no year, no genre) can
- * surface tens of thousands of releases for big music nations. Cap them
- * tighter to keep reconciliation costs in check and the queue legible.
- * Once the user narrows by year or genre, we open the result set back up.
- */
-function effectivePerPage(filters: DiscogsSearchFilters): number {
-  const hasNarrowingFilter = Boolean(filters.year || filters.genre);
-  return hasNarrowingFilter ? 25 : 10;
+interface QueueState {
+  /** Accumulated across pages — page 1, then appended on scroll. */
+  results: NormalizedRelease[];
+  /** Pagination metadata from the *latest* page fetched. */
+  pagination: DiscogsPagination | null;
+  /** The query the queue was built for. Same identity across pagination,
+   * changes on a fresh search. Used to key the list so its internal state
+   * resets only when the search actually changes. */
+  query: DiscogsSearchFilters | null;
+  pagesLoaded: number;
 }
+
+const EMPTY_QUEUE: QueueState = {
+  results: [],
+  pagination: null,
+  query: null,
+  pagesLoaded: 0,
+};
 
 export default function HomePage() {
   const [filters, setFilters] =
     useState<DiscogsSearchFilters>(INITIAL_FILTERS);
-  const [data, setData] = useState<NormalizedSearchResponse | null>(null);
+  const [queue, setQueue] = useState<QueueState>(EMPTY_QUEUE);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [lastQuery, setLastQuery] = useState<DiscogsSearchFilters | null>(null);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   const inflight = useRef<AbortController | null>(null);
 
   const runSearch = useCallback(async (raw: DiscogsSearchFilters) => {
     const next: DiscogsSearchFilters = {
       ...raw,
-      per_page: effectivePerPage(raw),
+      page: 1,
+      per_page: INITIAL_FILTERS.per_page,
     };
     inflight.current?.abort();
     const controller = new AbortController();
@@ -52,12 +63,16 @@ export default function HomePage() {
 
     setIsLoading(true);
     setError(null);
-    setLastQuery(next);
 
     try {
       const response = await searchReleases(next, controller.signal);
       if (controller.signal.aborted) return;
-      setData(response);
+      setQueue({
+        results: response.results,
+        pagination: response.pagination,
+        query: next,
+        pagesLoaded: 1,
+      });
     } catch (err) {
       if (controller.signal.aborted) return;
       const message =
@@ -67,13 +82,52 @@ export default function HomePage() {
             ? err.message
             : "Unknown error";
       setError(message);
-      setData(null);
+      setQueue(EMPTY_QUEUE);
     } finally {
       if (inflight.current === controller) {
         setIsLoading(false);
       }
     }
   }, []);
+
+  const loadMore = useCallback(async () => {
+    if (isLoadingMore || isLoading) return;
+    if (!queue.pagination || !queue.query) return;
+    if (queue.pagesLoaded >= queue.pagination.pages) return;
+
+    const nextPage = queue.pagesLoaded + 1;
+    const nextFilters: DiscogsSearchFilters = {
+      ...queue.query,
+      page: nextPage,
+      per_page: queue.pagination.per_page,
+    };
+
+    setIsLoadingMore(true);
+    try {
+      const response = await searchReleases(nextFilters);
+      setQueue((prev) => {
+        // Guard against a fresh search having reset the queue while this
+        // request was in flight.
+        if (prev.query !== queue.query) return prev;
+        return {
+          ...prev,
+          results: [...prev.results, ...response.results],
+          pagination: response.pagination,
+          pagesLoaded: nextPage,
+        };
+      });
+    } catch (err) {
+      const message =
+        err instanceof SearchRequestError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : "Unknown error";
+      setError(message);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [isLoadingMore, isLoading, queue]);
 
   const handleSubmit = useCallback(() => {
     if (!filters.country) return;
@@ -83,9 +137,8 @@ export default function HomePage() {
   const handleReset = useCallback(() => {
     inflight.current?.abort();
     setFilters(INITIAL_FILTERS);
-    setData(null);
+    setQueue(EMPTY_QUEUE);
     setError(null);
-    setLastQuery(null);
   }, []);
 
   // Clicking a country on the map sets the filter AND auto-submits, since
@@ -98,6 +151,25 @@ export default function HomePage() {
     },
     [filters, runSearch],
   );
+
+  /**
+   * Synthesize a `NormalizedSearchResponse` for the downstream components.
+   * `results` is the accumulated array; `pagination` is from the latest
+   * page. Keeps the existing prop contract intact while letting us slice
+   * pagination state above it.
+   */
+  const data: NormalizedSearchResponse | null = useMemo(() => {
+    if (!queue.pagination || !queue.query) return null;
+    return {
+      results: queue.results,
+      pagination: queue.pagination,
+      query: queue.query,
+    };
+  }, [queue]);
+
+  const hasMore = queue.pagination
+    ? queue.pagesLoaded < queue.pagination.pages
+    : false;
 
   return (
     <YoutubePlayerProvider>
@@ -115,9 +187,13 @@ export default function HomePage() {
           <MainPane
             data={data}
             error={error}
-            lastQuery={lastQuery}
+            lastQuery={queue.query}
             selectedCountry={filters.country ?? null}
             onSelectCountry={handleSelectCountry}
+            pagesLoaded={queue.pagesLoaded}
+            hasMore={hasMore}
+            isLoadingMore={isLoadingMore}
+            onLoadMore={loadMore}
           />
         </main>
         <NowPlayingPane />
