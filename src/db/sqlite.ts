@@ -1,29 +1,22 @@
 import "server-only";
 
-import Database, { type Database as DatabaseType } from "better-sqlite3";
-import { existsSync, mkdirSync } from "node:fs";
-import path from "node:path";
+import { createClient, type Client } from "@libsql/client";
+
+import { serverEnv } from "@/lib/env";
 
 /**
- * Singleton SQLite connection. Created lazily so the database file isn't
- * touched at build time — Next 16 prerendering hits routes for analysis and
- * we don't want side effects in import-only code paths.
+ * Singleton Turso (libSQL) client. Lazy + async — the first `getDatabase()`
+ * call opens the connection and runs the idempotent schema; subsequent
+ * calls reuse the cached client. Concurrent first-callers share a single
+ * init promise so we never run the schema twice.
  *
- * Path is overridable via TIME_GROOVE_DB_PATH so tests / CI can point at
- * a temp file or :memory:.
+ * URL formats:
+ *   libsql://my-db-org.turso.io   — hosted Turso (needs TURSO_AUTH_TOKEN)
+ *   file:./time-groove.db         — local embedded libSQL (no token)
+ *
+ * Note: same module path as the previous better-sqlite3 setup so existing
+ * imports keep working; the API just turned async.
  */
-
-let cached: DatabaseType | null = null;
-
-function defaultDbPath(): string {
-  return process.env.TIME_GROOVE_DB_PATH ?? path.join(process.cwd(), "time-groove.db");
-}
-
-function ensureParentDir(filePath: string): void {
-  if (filePath === ":memory:") return;
-  const dir = path.dirname(path.resolve(filePath));
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-}
 
 const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS reconciliation_mappings (
@@ -56,18 +49,36 @@ CREATE TABLE IF NOT EXISTS discogs_video_resolutions (
 CREATE INDEX IF NOT EXISTS idx_video_resolved_at ON discogs_video_resolutions(resolved_at);
 `;
 
-export function getDatabase(): DatabaseType {
+let cached: Client | null = null;
+let initPromise: Promise<Client> | null = null;
+
+async function connect(): Promise<Client> {
+  const { url, authToken } = serverEnv.turso;
+  const client = createClient({
+    url,
+    // libSQL ignores an empty token but errors on null when the URL is
+    // hosted, so only pass it when set.
+    ...(authToken ? { authToken } : {}),
+  });
+  await client.executeMultiple(SCHEMA_SQL);
+  return client;
+}
+
+export async function getDatabase(): Promise<Client> {
   if (cached) return cached;
-  const dbPath = defaultDbPath();
-  ensureParentDir(dbPath);
-
-  const db = new Database(dbPath);
-  db.pragma("journal_mode = WAL");
-  db.pragma("foreign_keys = ON");
-  db.exec(SCHEMA_SQL);
-
-  cached = db;
-  return db;
+  if (initPromise) return initPromise;
+  initPromise = connect()
+    .then((c) => {
+      cached = c;
+      return c;
+    })
+    .catch((err) => {
+      // Reset so the next call retries the connect rather than always
+      // returning the same rejected promise.
+      initPromise = null;
+      throw err;
+    });
+  return initPromise;
 }
 
 /** Test/cleanup helper. */
@@ -76,4 +87,5 @@ export function closeDatabase(): void {
     cached.close();
     cached = null;
   }
+  initPromise = null;
 }

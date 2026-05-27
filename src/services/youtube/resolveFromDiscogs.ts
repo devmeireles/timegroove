@@ -48,7 +48,7 @@ export async function resolveYoutubeFromDiscogs(
   discogsType: "release" | "master",
   signal?: AbortSignal,
 ): Promise<ResolveResult> {
-  const cached = findVideoResolution(discogsId, discogsType);
+  const cached = await findVideoResolution(discogsId, discogsType);
   if (cached) {
     return { videoId: cached.youtubeVideoId, cached: true };
   }
@@ -72,7 +72,7 @@ export async function resolveYoutubeFromDiscogs(
 
   // Cache the entire detail payload (not just `videos`) so the album-detail
   // dialog can reuse this row without an extra Discogs API call.
-  saveVideoResolution({
+  await saveVideoResolution({
     discogsId,
     discogsType,
     youtubeVideoId: videoId,

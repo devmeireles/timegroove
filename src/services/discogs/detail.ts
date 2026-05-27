@@ -28,7 +28,7 @@ export async function getDiscogsDetail(
   discogsType: "release" | "master",
   signal?: AbortSignal,
 ): Promise<NormalizedDiscogsDetail> {
-  const cached = findEntityRawPayload(discogsId, discogsType);
+  const cached = await findEntityRawPayload(discogsId, discogsType);
   if (isFullDetailPayload(cached)) {
     return normalizeDetail(cached, discogsType);
   }
@@ -42,7 +42,7 @@ export async function getDiscogsDetail(
   // existing video resolution when upgrading a partial-cache row.
   const videoId = pickFirstYoutubeId(fresh);
 
-  saveVideoResolution({
+  await saveVideoResolution({
     discogsId,
     discogsType,
     youtubeVideoId: videoId,

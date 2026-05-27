@@ -45,7 +45,7 @@ export async function reconcileRelease({
   const discogsType: "release" | "master" =
     release.type === "master" ? "master" : "release";
 
-  const cached = findMapping(release.id, discogsType);
+  const cached = await findMapping(release.id, discogsType);
   if (cached) {
     return hydrateFromCache(cached, release);
   }
@@ -54,7 +54,7 @@ export async function reconcileRelease({
   const scored = await findBestSpotifyMatch(matchInput, signal);
 
   if (!scored) {
-    upsertMapping({
+    await upsertMapping({
       discogsId: release.id,
       discogsType,
       spotifyArtistId: null,
@@ -76,7 +76,7 @@ export async function reconcileRelease({
   const enriched = await materializeSpotify(scored, signal);
   const confidence = totalConfidence(scored.score);
 
-  upsertMapping({
+  await upsertMapping({
     discogsId: release.id,
     discogsType,
     spotifyArtistId: scored.candidate.artists[0]?.id ?? null,

@@ -40,8 +40,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# sqlite reconciliation cache
+# libSQL embedded files (only present in local-file mode; Turso hosted has no files)
 /time-groove.db
-/time-groove.db-journal
-/time-groove.db-wal
-/time-groove.db-shm
+/time-groove.db-*

@@ -44,4 +44,16 @@ export const serverEnv = {
       return readRequired("SPOTIFY_CLIENT_SECRET");
     },
   },
+  turso: {
+    get url() {
+      return readRequired("TURSO_DATABASE_URL");
+    },
+    /**
+     * Empty token is allowed when `TURSO_DATABASE_URL` is a `file:` URL
+     * (embedded mode) — only hosted libsql:// URLs require it.
+     */
+    get authToken() {
+      return readOptional("TURSO_AUTH_TOKEN", "");
+    },
+  },
 } as const;
