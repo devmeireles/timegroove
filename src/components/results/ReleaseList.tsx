@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { LoaderCircle } from "lucide-react";
 
 import { AlbumDetailDialog } from "@/components/details/AlbumDetailDialog";
+import { PaginationFooter } from "@/components/results/PaginationFooter";
 import { ReconcileLoadingState } from "@/components/results/ReconcileLoadingState";
 import { ReleaseCard } from "@/components/results/ReleaseCard";
 import { useFavoritesContext } from "@/contexts/FavoritesContext";
@@ -258,52 +258,5 @@ export function ReleaseList({
         onClose={() => setDetailItem(null)}
       />
     </div>
-  );
-}
-
-function PaginationFooter({
-  hasMore,
-  isLoadingMore,
-  sentinelRef,
-}: {
-  hasMore: boolean;
-  isLoadingMore: boolean;
-  sentinelRef: React.RefObject<HTMLDivElement | null>;
-}) {
-  if (!hasMore) {
-    return (
-      <p className="px-2 py-4 text-center font-mono text-[10px] uppercase tracking-[0.18em] text-(--color-foreground-subtle)">
-        end of crate
-      </p>
-    );
-  }
-  return (
-    <div
-      ref={sentinelRef}
-      className="flex items-center justify-center gap-2 px-2 py-4"
-    >
-      {isLoadingMore ? (
-        <>
-          <Spinner />
-          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-(--color-foreground-subtle)">
-            loading more
-          </span>
-        </>
-      ) : (
-        <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-(--color-foreground-subtle)">
-          scroll for more
-        </span>
-      )}
-    </div>
-  );
-}
-
-function Spinner() {
-  return (
-    <LoaderCircle
-      size={12}
-      aria-hidden="true"
-      className="animate-spin text-(--color-accent)"
-    />
   );
 }

@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ExternalLink as ExternalLinkIcon, Heart, LoaderCircle, X } from "lucide-react";
+import { ExternalLink as ExternalLinkIcon } from "lucide-react";
 
+import { CloseIconButton } from "@/components/common/CloseIconButton";
 import { CoverArt } from "@/components/common/CoverArt";
+import { FavoriteToggleButton } from "@/components/common/FavoriteToggleButton";
 import { Dialog } from "@/components/details/Dialog";
 import { PlaylistMenuButton } from "@/components/playlists/PlaylistMenuButton";
 import { useFavoritesContext } from "@/contexts/FavoritesContext";
@@ -195,12 +197,19 @@ function DialogBody({
         </div>
         <div className="flex items-center gap-2">
           <PlaylistMenuButton release={release} />
-          <FavoriteButton
+          <FavoriteToggleButton
             isFavorite={isFavorite(release)}
             isPending={isFavoritePending(release)}
             onToggle={() => void toggleFavorite(release)}
+            className="shrink-0"
           />
-          <CloseButton onClick={onClose} />
+          <CloseIconButton
+            onClick={onClose}
+            variant="ghost"
+            ariaLabel="Close"
+            title="Close"
+            iconSize={14}
+          />
         </div>
       </header>
 
@@ -326,43 +335,6 @@ function DialogBody({
         ) : null}
       </div>
     </div>
-  );
-}
-
-function FavoriteButton({
-  isFavorite,
-  isPending,
-  onToggle,
-}: {
-  isFavorite: boolean;
-  isPending: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      disabled={isPending}
-      className={
-        "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition-colors " +
-        (isFavorite
-          ? "border-pink-500/60 bg-pink-500/20 text-pink-400"
-          : "border-(--color-border) text-(--color-foreground-subtle) hover:border-(--color-border-strong) hover:text-(--color-foreground)") +
-        (isPending ? " opacity-60" : "")
-      }
-      aria-label={isFavorite ? "Remove favorite" : "Add favorite"}
-      title={isFavorite ? "Remove from favorites" : "Add to favorites"}
-    >
-      {isPending ? (
-        <LoaderCircle size={12} aria-hidden="true" className="animate-spin" />
-      ) : (
-        <Heart
-          size={12}
-          aria-hidden="true"
-          fill={isFavorite ? "currentColor" : "none"}
-        />
-      )}
-    </button>
   );
 }
 
@@ -523,18 +495,5 @@ function ExternalLink({ href, label }: { href: string; label: string }) {
       <span>{label}</span>
       <ExternalLinkIcon size={10} aria-hidden="true" />
     </a>
-  );
-}
-
-function CloseButton({ onClick }: { onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label="Close"
-      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-(--color-foreground-subtle) transition-colors hover:bg-(--color-surface-elevated) hover:text-(--color-foreground)"
-    >
-      <X size={14} aria-hidden="true" />
-    </button>
   );
 }

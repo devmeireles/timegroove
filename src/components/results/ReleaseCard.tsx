@@ -3,14 +3,14 @@
 import {
   AlertCircle,
   ExternalLink,
-  Heart,
-  LoaderCircle,
   Pause,
   Play,
   RotateCcw,
 } from "lucide-react";
 
 import { CoverArt } from "@/components/common/CoverArt";
+import { FavoriteToggleButton } from "@/components/common/FavoriteToggleButton";
+import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { splitDiscogsTitle } from "@/lib/text/normalize";
 import type { NormalizedRelease } from "@/types/discogs";
 
@@ -102,7 +102,7 @@ export function ReleaseCard({
         className="flex shrink-0 flex-col items-end justify-center gap-2 pl-2"
         onClick={(event) => event.stopPropagation()}
       >
-        <FavoriteButton
+        <FavoriteToggleButton
           isFavorite={isFavorite}
           isPending={isFavoritePending}
           onToggle={onToggleFavorite}
@@ -119,43 +119,6 @@ export function ReleaseCard({
         ) : null}
       </div>
     </article>
-  );
-}
-
-function FavoriteButton({
-  isFavorite,
-  isPending,
-  onToggle,
-}: {
-  isFavorite: boolean;
-  isPending: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      disabled={isPending}
-      className={
-        "flex h-8 w-8 items-center justify-center rounded-full border transition-colors " +
-        (isFavorite
-          ? "border-pink-500/60 bg-pink-500/20 text-pink-400"
-          : "border-(--color-border) text-(--color-foreground-subtle) hover:border-(--color-border-strong) hover:text-(--color-foreground)") +
-        (isPending ? " opacity-60" : "")
-      }
-      aria-label={isFavorite ? "Remove favorite" : "Add favorite"}
-      title={isFavorite ? "Remove from favorites" : "Add to favorites"}
-    >
-      {isPending ? (
-        <LoaderCircle size={12} aria-hidden="true" className="animate-spin" />
-      ) : (
-        <Heart
-          size={12}
-          aria-hidden="true"
-          fill={isFavorite ? "currentColor" : "none"}
-        />
-      )}
-    </button>
   );
 }
 
@@ -228,7 +191,7 @@ function PlayButton({
           resolveStatus === "resolving" ? "Looking up video" : "Matching"
         }
       >
-        <Spinner />
+        <LoadingSpinner size={12} />
       </button>
     );
   }
@@ -295,11 +258,5 @@ function PlayButton({
         <Play size={12} fill="currentColor" aria-hidden="true" />
       )}
     </button>
-  );
-}
-
-function Spinner() {
-  return (
-    <LoaderCircle size={12} aria-hidden="true" className="animate-spin" />
   );
 }

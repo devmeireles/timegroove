@@ -2,18 +2,16 @@
 
 import { useState } from "react";
 import {
-  Heart,
-  LoaderCircle,
-  Pause,
-  Play,
   SkipBack,
   SkipForward,
-  X,
 } from "lucide-react";
 
+import { CloseIconButton } from "@/components/common/CloseIconButton";
 import { CoverArt } from "@/components/common/CoverArt";
+import { FavoriteToggleButton } from "@/components/common/FavoriteToggleButton";
 import { AlbumDetailDialog } from "@/components/details/AlbumDetailDialog";
 import { PlaylistMenuButton } from "@/components/playlists/PlaylistMenuButton";
+import { PlayPauseButton } from "@/components/results/PlayPauseButton";
 import { useFavoritesContext } from "@/contexts/FavoritesContext";
 import {
   useYoutubePlayerControllerContext,
@@ -118,13 +116,13 @@ export function NowPlayingPane() {
         </div>
 
         <div className="flex items-center justify-end gap-2">
-          <FavoriteButton
+          <FavoriteToggleButton
             isFavorite={isFavorite(loadedRelease)}
             isPending={isFavoritePending(loadedRelease)}
             onToggle={() => void toggleFavorite(loadedRelease)}
           />
           <PlaylistMenuButton release={loadedRelease} direction="up" />
-          <CloseButton onClick={stop} />
+          <CloseIconButton onClick={stop} ariaLabel="Stop and close" title="Stop" />
         </div>
       </div>
 
@@ -166,87 +164,6 @@ function TrackJumpButton({
       ) : (
         <SkipForward size={12} aria-hidden="true" />
       )}
-    </button>
-  );
-}
-
-function PlayPauseButton({
-  isPlaying,
-  onToggle,
-}: {
-  isPlaying: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      className={
-        "flex h-10 w-10 items-center justify-center rounded-full transition-colors " +
-        (isPlaying
-          ? "bg-(--color-accent) text-(--color-background) ring-2 ring-accent/40"
-          : "border border-(--color-accent) text-(--color-accent) hover:bg-(--color-accent) hover:text-(--color-background)")
-      }
-      aria-label={isPlaying ? "Pause" : "Play"}
-      aria-pressed={isPlaying}
-      title={isPlaying ? "Pause" : "Play"}
-    >
-      {isPlaying ? (
-        <Pause size={14} fill="currentColor" aria-hidden="true" />
-      ) : (
-        <Play size={14} fill="currentColor" aria-hidden="true" />
-      )}
-    </button>
-  );
-}
-
-function FavoriteButton({
-  isFavorite,
-  isPending,
-  onToggle,
-}: {
-  isFavorite: boolean;
-  isPending: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      disabled={isPending}
-      className={
-        "flex h-8 w-8 items-center justify-center rounded-full border transition-colors " +
-        (isFavorite
-          ? "border-pink-500/60 bg-pink-500/20 text-pink-400"
-          : "border-(--color-border) text-(--color-foreground-subtle) hover:border-(--color-border-strong) hover:text-(--color-foreground)") +
-        (isPending ? " opacity-60" : "")
-      }
-      aria-label={isFavorite ? "Remove favorite" : "Add favorite"}
-      title={isFavorite ? "Remove from favorites" : "Add to favorites"}
-    >
-      {isPending ? (
-        <LoaderCircle size={12} aria-hidden="true" className="animate-spin" />
-      ) : (
-        <Heart
-          size={12}
-          aria-hidden="true"
-          fill={isFavorite ? "currentColor" : "none"}
-        />
-      )}
-    </button>
-  );
-}
-
-function CloseButton({ onClick }: { onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex h-8 w-8 items-center justify-center rounded-full border border-(--color-border) text-(--color-foreground-subtle) transition-colors hover:border-(--color-border-strong) hover:text-(--color-foreground)"
-      aria-label="Stop and close"
-      title="Stop"
-    >
-      <X size={12} aria-hidden="true" />
     </button>
   );
 }
