@@ -1,8 +1,9 @@
 import "server-only";
 
-import type { Row } from "@libsql/client";
+import { eq } from "drizzle-orm";
 
-import { getDatabase } from "@/db/sqlite";
+import { getOrm } from "@/db/orm";
+import { appUsers } from "@/db/schema";
 
 export interface AppUser {
   id: number;
@@ -15,27 +16,24 @@ export interface AppUser {
   lastSeenAt: string;
 }
 
-function rowToUser(row: Row): AppUser {
-  return {
-    id: Number(row.id),
-    auth0Sub: String(row.auth0_sub),
-    email: (row.email as string | null) ?? null,
-    displayName: (row.display_name as string | null) ?? null,
-    avatarUrl: (row.avatar_url as string | null) ?? null,
-    createdAt: String(row.created_at),
-    updatedAt: String(row.updated_at),
-    lastSeenAt: String(row.last_seen_at),
-  };
-}
-
 export async function findUserByAuth0Sub(sub: string): Promise<AppUser | null> {
-  const db = await getDatabase();
-  const result = await db.execute({
-    sql: `SELECT * FROM app_users WHERE auth0_sub = ?`,
-    args: [sub],
-  });
-  const row = result.rows[0];
-  return row ? rowToUser(row) : null;
+  const db = await getOrm();
+  const [row] = await db
+    .select({
+      id: appUsers.id,
+      auth0Sub: appUsers.auth0Sub,
+      email: appUsers.email,
+      displayName: appUsers.displayName,
+      avatarUrl: appUsers.avatarUrl,
+      createdAt: appUsers.createdAt,
+      updatedAt: appUsers.updatedAt,
+      lastSeenAt: appUsers.lastSeenAt,
+    })
+    .from(appUsers)
+    .where(eq(appUsers.auth0Sub, sub))
+    .limit(1);
+
+  return row ?? null;
 }
 
 export interface UpsertUserInput {
@@ -46,31 +44,30 @@ export interface UpsertUserInput {
 }
 
 export async function upsertUser(input: UpsertUserInput): Promise<AppUser> {
-  const db = await getDatabase();
+  const db = await getOrm();
   const now = new Date().toISOString();
 
-  await db.execute({
-    sql: `
-      INSERT INTO app_users (
-        auth0_sub, email, display_name, avatar_url, created_at, updated_at, last_seen_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(auth0_sub) DO UPDATE SET
-        email        = excluded.email,
-        display_name = excluded.display_name,
-        avatar_url   = excluded.avatar_url,
-        updated_at   = excluded.updated_at,
-        last_seen_at = excluded.last_seen_at
-    `,
-    args: [
-      input.auth0Sub,
-      input.email,
-      input.displayName,
-      input.avatarUrl,
-      now,
-      now,
-      now,
-    ],
-  });
+  await db
+    .insert(appUsers)
+    .values({
+      auth0Sub: input.auth0Sub,
+      email: input.email,
+      displayName: input.displayName,
+      avatarUrl: input.avatarUrl,
+      createdAt: now,
+      updatedAt: now,
+      lastSeenAt: now,
+    })
+    .onConflictDoUpdate({
+      target: appUsers.auth0Sub,
+      set: {
+        email: input.email,
+        displayName: input.displayName,
+        avatarUrl: input.avatarUrl,
+        updatedAt: now,
+        lastSeenAt: now,
+      },
+    });
 
   const stored = await findUserByAuth0Sub(input.auth0Sub);
   if (!stored) {

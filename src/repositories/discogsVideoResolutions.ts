@@ -1,8 +1,9 @@
 import "server-only";
 
-import type { Row } from "@libsql/client";
+import { and, eq } from "drizzle-orm";
 
-import { getDatabase } from "@/db/sqlite";
+import { getOrm } from "@/db/orm";
+import { discogsVideoResolutions } from "@/db/schema";
 
 export interface VideoResolution {
   id: number;
@@ -13,26 +14,38 @@ export interface VideoResolution {
   resolvedAt: string;
 }
 
-function rowToResolution(row: Row): VideoResolution {
-  return {
-    id: Number(row.id),
-    discogsId: Number(row.discogs_id),
-    discogsType: row.discogs_type as "release" | "master",
-    youtubeVideoId: (row.youtube_video_id as string | null) ?? null,
-    resolvedAt: row.resolved_at as string,
-  };
+function rowToResolution(row: {
+  id: number;
+  discogsId: number;
+  discogsType: "release" | "master";
+  youtubeVideoId: string | null;
+  resolvedAt: string;
+}): VideoResolution {
+  return row;
 }
 
 export async function findVideoResolution(
   discogsId: number,
   discogsType: "release" | "master",
 ): Promise<VideoResolution | null> {
-  const db = await getDatabase();
-  const result = await db.execute({
-    sql: `SELECT * FROM discogs_video_resolutions WHERE discogs_id = ? AND discogs_type = ?`,
-    args: [discogsId, discogsType],
-  });
-  const row = result.rows[0];
+  const db = await getOrm();
+  const [row] = await db
+    .select({
+      id: discogsVideoResolutions.id,
+      discogsId: discogsVideoResolutions.discogsId,
+      discogsType: discogsVideoResolutions.discogsType,
+      youtubeVideoId: discogsVideoResolutions.youtubeVideoId,
+      resolvedAt: discogsVideoResolutions.resolvedAt,
+    })
+    .from(discogsVideoResolutions)
+    .where(
+      and(
+        eq(discogsVideoResolutions.discogsId, discogsId),
+        eq(discogsVideoResolutions.discogsType, discogsType),
+      ),
+    )
+    .limit(1);
+
   return row ? rowToResolution(row) : null;
 }
 
@@ -46,17 +59,22 @@ export async function findEntityRawPayload(
   discogsId: number,
   discogsType: "release" | "master",
 ): Promise<unknown | null> {
-  const db = await getDatabase();
-  const result = await db.execute({
-    sql: `SELECT raw_payload FROM discogs_video_resolutions WHERE discogs_id = ? AND discogs_type = ?`,
-    args: [discogsId, discogsType],
-  });
-  const row = result.rows[0];
+  const db = await getOrm();
+  const [row] = await db
+    .select({ rawPayload: discogsVideoResolutions.rawPayload })
+    .from(discogsVideoResolutions)
+    .where(
+      and(
+        eq(discogsVideoResolutions.discogsId, discogsId),
+        eq(discogsVideoResolutions.discogsType, discogsType),
+      ),
+    )
+    .limit(1);
+
   if (!row) return null;
-  const payload = row.raw_payload;
-  if (typeof payload !== "string") return null;
+  if (typeof row.rawPayload !== "string") return null;
   try {
-    return JSON.parse(payload);
+    return JSON.parse(row.rawPayload);
   } catch {
     return null;
   }
@@ -72,27 +90,30 @@ export interface SaveVideoResolutionInput {
 export async function saveVideoResolution(
   input: SaveVideoResolutionInput,
 ): Promise<VideoResolution> {
-  const db = await getDatabase();
+  const db = await getOrm();
   const now = new Date().toISOString();
 
-  await db.execute({
-    sql: `
-      INSERT INTO discogs_video_resolutions (
-        discogs_id, discogs_type, youtube_video_id, resolved_at, raw_payload
-      ) VALUES (?, ?, ?, ?, ?)
-      ON CONFLICT(discogs_id, discogs_type) DO UPDATE SET
-        youtube_video_id = excluded.youtube_video_id,
-        resolved_at      = excluded.resolved_at,
-        raw_payload      = excluded.raw_payload
-    `,
-    args: [
-      input.discogsId,
-      input.discogsType,
-      input.youtubeVideoId,
-      now,
-      input.rawPayload != null ? JSON.stringify(input.rawPayload) : null,
-    ],
-  });
+  await db
+    .insert(discogsVideoResolutions)
+    .values({
+      discogsId: input.discogsId,
+      discogsType: input.discogsType,
+      youtubeVideoId: input.youtubeVideoId,
+      resolvedAt: now,
+      rawPayload: input.rawPayload != null ? JSON.stringify(input.rawPayload) : null,
+    })
+    .onConflictDoUpdate({
+      target: [
+        discogsVideoResolutions.discogsId,
+        discogsVideoResolutions.discogsType,
+      ],
+      set: {
+        youtubeVideoId: input.youtubeVideoId,
+        resolvedAt: now,
+        rawPayload:
+          input.rawPayload != null ? JSON.stringify(input.rawPayload) : null,
+      },
+    });
 
   const stored = await findVideoResolution(input.discogsId, input.discogsType);
   if (!stored) {

@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
     "@auth0/nextjs-auth0": "^4.21.0",
@@ -28,6 +30,7 @@
     "@types/react-dom": "^19",
     "@types/react-simple-maps": "^3.0.6",
     "babel-plugin-react-compiler": "1.0.0",
+    "drizzle-kit": "^0.31.10",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
     "tailwindcss": "^4",

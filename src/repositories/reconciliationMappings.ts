@@ -1,34 +1,46 @@
 import "server-only";
 
-import type { Row } from "@libsql/client";
+import { and, eq } from "drizzle-orm";
 
-import { getDatabase } from "@/db/sqlite";
+import { getOrm } from "@/db/orm";
+import { reconciliationMappings } from "@/db/schema";
 import type {
   MappingStatus,
   ReconciliationMapping,
 } from "@/types/reconciliation";
 
-function rowToMapping(row: Row): ReconciliationMapping {
-  const trackIdsRaw = row.spotify_track_ids;
+function rowToMapping(row: {
+  id: number;
+  discogsId: number;
+  discogsType: "release" | "master";
+  spotifyArtistId: string | null;
+  spotifyAlbumId: string | null;
+  spotifyTrackIds: string | null;
+  confidenceScore: number;
+  status: "matched" | "no-match" | "manual-override";
+  matchedAt: string;
+  rawSpotifyPayload: string | null;
+}): ReconciliationMapping {
   const trackIds =
-    typeof trackIdsRaw === "string"
-      ? (JSON.parse(trackIdsRaw) as string[])
+    typeof row.spotifyTrackIds === "string"
+      ? (JSON.parse(row.spotifyTrackIds) as string[])
       : [];
 
-  const payloadRaw = row.raw_spotify_payload;
   const payload =
-    typeof payloadRaw === "string" ? JSON.parse(payloadRaw) : null;
+    typeof row.rawSpotifyPayload === "string"
+      ? JSON.parse(row.rawSpotifyPayload)
+      : null;
 
   return {
-    id: Number(row.id),
-    discogsId: Number(row.discogs_id),
-    discogsType: row.discogs_type as "release" | "master",
-    spotifyArtistId: (row.spotify_artist_id as string | null) ?? null,
-    spotifyAlbumId: (row.spotify_album_id as string | null) ?? null,
+    id: row.id,
+    discogsId: row.discogsId,
+    discogsType: row.discogsType,
+    spotifyArtistId: row.spotifyArtistId,
+    spotifyAlbumId: row.spotifyAlbumId,
     spotifyTrackIds: trackIds,
-    confidenceScore: Number(row.confidence_score),
+    confidenceScore: row.confidenceScore,
     status: row.status as MappingStatus,
-    matchedAt: row.matched_at as string,
+    matchedAt: row.matchedAt,
     rawSpotifyPayload: payload,
   };
 }
@@ -37,12 +49,29 @@ export async function findMapping(
   discogsId: number,
   discogsType: "release" | "master",
 ): Promise<ReconciliationMapping | null> {
-  const db = await getDatabase();
-  const result = await db.execute({
-    sql: `SELECT * FROM reconciliation_mappings WHERE discogs_id = ? AND discogs_type = ?`,
-    args: [discogsId, discogsType],
-  });
-  const row = result.rows[0];
+  const db = await getOrm();
+  const [row] = await db
+    .select({
+      id: reconciliationMappings.id,
+      discogsId: reconciliationMappings.discogsId,
+      discogsType: reconciliationMappings.discogsType,
+      spotifyArtistId: reconciliationMappings.spotifyArtistId,
+      spotifyAlbumId: reconciliationMappings.spotifyAlbumId,
+      spotifyTrackIds: reconciliationMappings.spotifyTrackIds,
+      confidenceScore: reconciliationMappings.confidenceScore,
+      status: reconciliationMappings.status,
+      matchedAt: reconciliationMappings.matchedAt,
+      rawSpotifyPayload: reconciliationMappings.rawSpotifyPayload,
+    })
+    .from(reconciliationMappings)
+    .where(
+      and(
+        eq(reconciliationMappings.discogsId, discogsId),
+        eq(reconciliationMappings.discogsType, discogsType),
+      ),
+    )
+    .limit(1);
+
   return row ? rowToMapping(row) : null;
 }
 
@@ -60,38 +89,40 @@ export interface UpsertMappingInput {
 export async function upsertMapping(
   input: UpsertMappingInput,
 ): Promise<ReconciliationMapping> {
-  const db = await getDatabase();
+  const db = await getOrm();
   const now = new Date().toISOString();
 
-  await db.execute({
-    sql: `
-      INSERT INTO reconciliation_mappings (
-        discogs_id, discogs_type, spotify_artist_id, spotify_album_id,
-        spotify_track_ids, confidence_score, status, matched_at, raw_spotify_payload
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(discogs_id, discogs_type) DO UPDATE SET
-        spotify_artist_id   = excluded.spotify_artist_id,
-        spotify_album_id    = excluded.spotify_album_id,
-        spotify_track_ids   = excluded.spotify_track_ids,
-        confidence_score    = excluded.confidence_score,
-        status              = excluded.status,
-        matched_at          = excluded.matched_at,
-        raw_spotify_payload = excluded.raw_spotify_payload
-    `,
-    args: [
-      input.discogsId,
-      input.discogsType,
-      input.spotifyArtistId,
-      input.spotifyAlbumId,
-      JSON.stringify(input.spotifyTrackIds),
-      input.confidenceScore,
-      input.status,
-      now,
-      input.rawSpotifyPayload != null
-        ? JSON.stringify(input.rawSpotifyPayload)
-        : null,
-    ],
-  });
+  await db
+    .insert(reconciliationMappings)
+    .values({
+      discogsId: input.discogsId,
+      discogsType: input.discogsType,
+      spotifyArtistId: input.spotifyArtistId,
+      spotifyAlbumId: input.spotifyAlbumId,
+      spotifyTrackIds: JSON.stringify(input.spotifyTrackIds),
+      confidenceScore: input.confidenceScore,
+      status: input.status,
+      matchedAt: now,
+      rawSpotifyPayload:
+        input.rawSpotifyPayload != null
+          ? JSON.stringify(input.rawSpotifyPayload)
+          : null,
+    })
+    .onConflictDoUpdate({
+      target: [reconciliationMappings.discogsId, reconciliationMappings.discogsType],
+      set: {
+        spotifyArtistId: input.spotifyArtistId,
+        spotifyAlbumId: input.spotifyAlbumId,
+        spotifyTrackIds: JSON.stringify(input.spotifyTrackIds),
+        confidenceScore: input.confidenceScore,
+        status: input.status,
+        matchedAt: now,
+        rawSpotifyPayload:
+          input.rawSpotifyPayload != null
+            ? JSON.stringify(input.rawSpotifyPayload)
+            : null,
+      },
+    });
 
   const stored = await findMapping(input.discogsId, input.discogsType);
   if (!stored) {

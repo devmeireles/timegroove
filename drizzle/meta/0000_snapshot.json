@@ -1,0 +1,636 @@
+{
+  "version": "6",
+  "dialect": "sqlite",
+  "id": "6be89aa8-c7b4-44c7-9b3c-3535a7711fce",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "tables": {
+    "app_playlist_items": {
+      "name": "app_playlist_items",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "playlist_id": {
+          "name": "playlist_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "discogs_id": {
+          "name": "discogs_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "discogs_type": {
+          "name": "discogs_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "release_title": {
+          "name": "release_title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "release_year": {
+          "name": "release_year",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "release_country": {
+          "name": "release_country",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "cover_url": {
+          "name": "cover_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "app_playlist_items_playlist_discogs_unique": {
+          "name": "app_playlist_items_playlist_discogs_unique",
+          "columns": [
+            "playlist_id",
+            "discogs_id",
+            "discogs_type"
+          ],
+          "isUnique": true
+        },
+        "idx_playlist_items_playlist": {
+          "name": "idx_playlist_items_playlist",
+          "columns": [
+            "playlist_id"
+          ],
+          "isUnique": false
+        },
+        "idx_playlist_items_discogs": {
+          "name": "idx_playlist_items_discogs",
+          "columns": [
+            "discogs_id",
+            "discogs_type"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "app_playlist_items_playlist_id_app_playlists_id_fk": {
+          "name": "app_playlist_items_playlist_id_app_playlists_id_fk",
+          "tableFrom": "app_playlist_items",
+          "tableTo": "app_playlists",
+          "columnsFrom": [
+            "playlist_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "app_playlists": {
+      "name": "app_playlists",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "app_playlists_user_name_unique": {
+          "name": "app_playlists_user_name_unique",
+          "columns": [
+            "user_id",
+            "name"
+          ],
+          "isUnique": true
+        },
+        "idx_playlists_user": {
+          "name": "idx_playlists_user",
+          "columns": [
+            "user_id"
+          ],
+          "isUnique": false
+        },
+        "idx_playlists_updated": {
+          "name": "idx_playlists_updated",
+          "columns": [
+            "updated_at"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "app_playlists_user_id_app_users_id_fk": {
+          "name": "app_playlists_user_id_app_users_id_fk",
+          "tableFrom": "app_playlists",
+          "tableTo": "app_users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "app_user_favorites": {
+      "name": "app_user_favorites",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "discogs_id": {
+          "name": "discogs_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "discogs_type": {
+          "name": "discogs_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "release_title": {
+          "name": "release_title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "release_year": {
+          "name": "release_year",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "release_country": {
+          "name": "release_country",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "cover_url": {
+          "name": "cover_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "app_user_favorites_user_discogs_unique": {
+          "name": "app_user_favorites_user_discogs_unique",
+          "columns": [
+            "user_id",
+            "discogs_id",
+            "discogs_type"
+          ],
+          "isUnique": true
+        },
+        "idx_favorites_user": {
+          "name": "idx_favorites_user",
+          "columns": [
+            "user_id"
+          ],
+          "isUnique": false
+        },
+        "idx_favorites_created": {
+          "name": "idx_favorites_created",
+          "columns": [
+            "created_at"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "app_user_favorites_user_id_app_users_id_fk": {
+          "name": "app_user_favorites_user_id_app_users_id_fk",
+          "tableFrom": "app_user_favorites",
+          "tableTo": "app_users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "app_users": {
+      "name": "app_users",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "auth0_sub": {
+          "name": "auth0_sub",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "display_name": {
+          "name": "display_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "avatar_url": {
+          "name": "avatar_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "last_seen_at": {
+          "name": "last_seen_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "app_users_auth0_sub_unique": {
+          "name": "app_users_auth0_sub_unique",
+          "columns": [
+            "auth0_sub"
+          ],
+          "isUnique": true
+        },
+        "idx_app_users_email": {
+          "name": "idx_app_users_email",
+          "columns": [
+            "email"
+          ],
+          "isUnique": false
+        },
+        "idx_app_users_last_seen": {
+          "name": "idx_app_users_last_seen",
+          "columns": [
+            "last_seen_at"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "discogs_artist_details": {
+      "name": "discogs_artist_details",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "artist_id": {
+          "name": "artist_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "raw_payload": {
+          "name": "raw_payload",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "fetched_at": {
+          "name": "fetched_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "discogs_artist_details_artist_unique": {
+          "name": "discogs_artist_details_artist_unique",
+          "columns": [
+            "artist_id"
+          ],
+          "isUnique": true
+        },
+        "idx_artist_fetched_at": {
+          "name": "idx_artist_fetched_at",
+          "columns": [
+            "fetched_at"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "discogs_video_resolutions": {
+      "name": "discogs_video_resolutions",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "discogs_id": {
+          "name": "discogs_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "discogs_type": {
+          "name": "discogs_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "youtube_video_id": {
+          "name": "youtube_video_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "resolved_at": {
+          "name": "resolved_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "raw_payload": {
+          "name": "raw_payload",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "discogs_video_resolutions_discogs_unique": {
+          "name": "discogs_video_resolutions_discogs_unique",
+          "columns": [
+            "discogs_id",
+            "discogs_type"
+          ],
+          "isUnique": true
+        },
+        "idx_video_resolved_at": {
+          "name": "idx_video_resolved_at",
+          "columns": [
+            "resolved_at"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "reconciliation_mappings": {
+      "name": "reconciliation_mappings",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "discogs_id": {
+          "name": "discogs_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "discogs_type": {
+          "name": "discogs_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "spotify_artist_id": {
+          "name": "spotify_artist_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "spotify_album_id": {
+          "name": "spotify_album_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "spotify_track_ids": {
+          "name": "spotify_track_ids",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "confidence_score": {
+          "name": "confidence_score",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "matched_at": {
+          "name": "matched_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "raw_spotify_payload": {
+          "name": "raw_spotify_payload",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "reconciliation_mappings_discogs_unique": {
+          "name": "reconciliation_mappings_discogs_unique",
+          "columns": [
+            "discogs_id",
+            "discogs_type"
+          ],
+          "isUnique": true
+        },
+        "idx_mapping_status": {
+          "name": "idx_mapping_status",
+          "columns": [
+            "status"
+          ],
+          "isUnique": false
+        },
+        "idx_mapping_matched_at": {
+          "name": "idx_mapping_matched_at",
+          "columns": [
+            "matched_at"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    }
+  },
+  "views": {},
+  "enums": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "indexes": {}
+  }
+}
