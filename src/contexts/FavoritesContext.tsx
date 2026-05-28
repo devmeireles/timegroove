@@ -1,24 +1,31 @@
 "use client";
 
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
+  useMemo,
   useState,
   type ReactNode,
 } from "react";
 
-import { redirectToLogin } from "@/lib/client/navigation";
+import {
+  addFavorite,
+  fetchFavorites,
+  removeFavorite,
+  type DiscogsType,
+  type FavoriteItem,
+} from "@/services/client/libraryApi";
 import type { NormalizedRelease } from "@/types/discogs";
-
-type DiscogsType = "release" | "master";
 
 interface FavoritesContextValue {
   isFavorite: (release: NormalizedRelease) => boolean;
   isFavoritePending: (release: NormalizedRelease) => boolean;
   toggleFavorite: (release: NormalizedRelease) => Promise<void>;
 }
+
+export const FAVORITES_QUERY_KEY = ["favorites"] as const;
 
 const FavoritesContext = createContext<FavoritesContextValue | null>(null);
 
@@ -34,42 +41,37 @@ function getReleaseFavoriteKey(release: NormalizedRelease): string {
   return buildFavoriteKey(release.id, getDiscogsType(release));
 }
 
+function buildOptimisticFavorite(release: NormalizedRelease): FavoriteItem {
+  const discogsType = getDiscogsType(release);
+  return {
+    id: -release.id,
+    userId: 0,
+    discogsId: release.id,
+    discogsType,
+    releaseTitle: release.title ?? null,
+    releaseYear: release.year ?? null,
+    releaseCountry: release.country ?? null,
+    coverUrl: release.coverImage ?? release.thumb ?? null,
+    createdAt: new Date().toISOString(),
+  };
+}
+
 export function FavoritesProvider({ children }: { children: ReactNode }) {
-  const [favoriteKeys, setFavoriteKeys] = useState<Set<string>>(new Set());
+  const queryClient = useQueryClient();
   const [favoritePending, setFavoritePending] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
-    const controller = new AbortController();
+  const { data: favorites = [] } = useQuery({
+    queryKey: FAVORITES_QUERY_KEY,
+    queryFn: fetchFavorites,
+  });
 
-    async function loadFavorites() {
-      try {
-        const response = await fetch("/api/favorites", {
-          signal: controller.signal,
-          cache: "no-store",
-        });
-        if (controller.signal.aborted) return;
-        if (!response.ok) {
-          setFavoriteKeys(new Set());
-          return;
-        }
-
-        const data = (await response.json()) as {
-          favorites?: Array<{ discogsId: number; discogsType: DiscogsType }>;
-        };
-
-        const next = new Set<string>();
-        for (const item of data.favorites ?? []) {
-          next.add(buildFavoriteKey(item.discogsId, item.discogsType));
-        }
-        setFavoriteKeys(next);
-      } catch {
-        if (!controller.signal.aborted) setFavoriteKeys(new Set());
-      }
+  const favoriteKeys = useMemo(() => {
+    const keys = new Set<string>();
+    for (const item of favorites) {
+      keys.add(buildFavoriteKey(item.discogsId, item.discogsType));
     }
-
-    void loadFavorites();
-    return () => controller.abort();
-  }, []);
+    return keys;
+  }, [favorites]);
 
   const toggleFavorite = useCallback(
     async (release: NormalizedRelease) => {
@@ -78,49 +80,40 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
       if (favoritePending.has(key)) return;
 
       const currentlyFavorite = favoriteKeys.has(key);
+      const previous =
+        queryClient.getQueryData<FavoriteItem[]>(FAVORITES_QUERY_KEY) ?? favorites;
+
       setFavoritePending((prev) => new Set(prev).add(key));
-      setFavoriteKeys((prev) => {
-        const next = new Set(prev);
-        if (currentlyFavorite) next.delete(key);
-        else next.add(key);
-        return next;
-      });
+      queryClient.setQueryData<FavoriteItem[]>(
+        FAVORITES_QUERY_KEY,
+        currentlyFavorite
+          ? previous.filter(
+              (item) =>
+                !(
+                  item.discogsId === release.id && item.discogsType === discogsType
+                ),
+            )
+          : [buildOptimisticFavorite(release), ...previous],
+      );
 
       try {
-        const response = currentlyFavorite
-          ? await fetch(
-              `/api/favorites?discogsId=${release.id}&discogsType=${discogsType}`,
-              { method: "DELETE" },
-            )
-          : await fetch("/api/favorites", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ release }),
-            });
-
-        if (response.status === 401) {
-          redirectToLogin();
-          throw new Error("Authentication required");
-        }
-        if (!response.ok) {
-          throw new Error("Failed to update favorite");
+        if (currentlyFavorite) {
+          await removeFavorite(release.id, discogsType);
+        } else {
+          await addFavorite(release);
         }
       } catch {
-        setFavoriteKeys((prev) => {
-          const next = new Set(prev);
-          if (currentlyFavorite) next.add(key);
-          else next.delete(key);
-          return next;
-        });
+        queryClient.setQueryData(FAVORITES_QUERY_KEY, previous);
       } finally {
         setFavoritePending((prev) => {
           const next = new Set(prev);
           next.delete(key);
           return next;
         });
+        void queryClient.invalidateQueries({ queryKey: FAVORITES_QUERY_KEY });
       }
     },
-    [favoriteKeys, favoritePending],
+    [favoriteKeys, favoritePending, favorites, queryClient],
   );
 
   const isFavorite = useCallback(

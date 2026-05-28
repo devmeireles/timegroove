@@ -1,21 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 import { CoverArt } from "@/components/common/CoverArt";
 import { AccountDialogShell } from "@/components/auth/dialogs/AccountDialogShell";
-import { redirectToLogin } from "@/lib/client/navigation";
-
-interface FavoriteItem {
-  id: number;
-  discogsId: number;
-  discogsType: "release" | "master";
-  releaseTitle: string | null;
-  releaseYear: number | null;
-  releaseCountry: string | null;
-  coverUrl: string | null;
-  createdAt: string;
-}
+import { FAVORITES_QUERY_KEY } from "@/contexts/FavoritesContext";
+import { fetchFavorites } from "@/services/client/libraryApi";
 
 interface FavoritesDialogProps {
   open: boolean;
@@ -23,47 +13,15 @@ interface FavoritesDialogProps {
 }
 
 export function FavoritesDialog({ open, onClose }: FavoritesDialogProps) {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
-
-  useEffect(() => {
-    if (!open) return;
-    const controller = new AbortController();
-
-    async function loadFavorites() {
-      setLoading(true);
-      setError(null);
-      try {
-        const response = await fetch("/api/favorites", {
-          cache: "no-store",
-          signal: controller.signal,
-        });
-        if (controller.signal.aborted) return;
-        if (response.status === 401) {
-          redirectToLogin();
-          return;
-        }
-        if (!response.ok) {
-          throw new Error("Failed to load favorites");
-        }
-        const data = (await response.json()) as { favorites?: FavoriteItem[] };
-        if (controller.signal.aborted) return;
-        setFavorites(data.favorites ?? []);
-      } catch (fetchError) {
-        if (controller.signal.aborted) return;
-        setError(
-          fetchError instanceof Error ? fetchError.message : "Unknown error",
-        );
-        setFavorites([]);
-      } finally {
-        if (!controller.signal.aborted) setLoading(false);
-      }
-    }
-
-    void loadFavorites();
-    return () => controller.abort();
-  }, [open]);
+  const {
+    data: favorites = [],
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: FAVORITES_QUERY_KEY,
+    queryFn: fetchFavorites,
+    enabled: open,
+  });
 
   return (
     <AccountDialogShell
@@ -71,8 +29,8 @@ export function FavoritesDialog({ open, onClose }: FavoritesDialogProps) {
       onClose={onClose}
       title="Favorites"
       ariaLabel="Your favorites"
-      loading={loading}
-      error={error}
+      loading={isLoading}
+      error={error instanceof Error ? error.message : null}
       loadingMessage="// loading favorites..."
       emptyMessage="// no favorites yet"
       isEmpty={favorites.length === 0}

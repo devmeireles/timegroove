@@ -1,16 +1,16 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ListPlus, LoaderCircle, Plus, X } from "lucide-react";
 
-import { redirectToLogin } from "@/lib/client/navigation";
+import {
+  createPlaylist,
+  fetchPlaylists,
+  updatePlaylistMembership,
+  type PlaylistMenuItem,
+} from "@/services/client/libraryApi";
 import type { NormalizedRelease } from "@/types/discogs";
-
-interface PlaylistMenuItem {
-  id: number;
-  name: string;
-  includesRelease: boolean;
-}
 
 export function PlaylistMenuButton({
   release,
@@ -20,16 +20,29 @@ export function PlaylistMenuButton({
   direction?: "down" | "up";
 }) {
   const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [playlists, setPlaylists] = useState<PlaylistMenuItem[]>([]);
   const [newName, setNewName] = useState("");
   const [creating, setCreating] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const queryClient = useQueryClient();
 
   const discogsType: "release" | "master" =
     release.type === "master" ? "master" : "release";
+  const queryKey = useMemo(
+    () => ["playlists", "release", release.id, discogsType] as const,
+    [release.id, discogsType],
+  );
+
+  const {
+    data: playlists = [],
+    isLoading,
+    isFetching,
+  } = useQuery({
+    queryKey,
+    queryFn: () => fetchPlaylists({ discogsId: release.id, discogsType }),
+    enabled: open,
+  });
 
   useEffect(() => {
     if (!open) return;
@@ -43,83 +56,27 @@ export function PlaylistMenuButton({
     return () => window.removeEventListener("pointerdown", onPointerDown);
   }, [open]);
 
-  const loadPlaylists = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch(
-        `/api/playlists?discogsId=${release.id}&discogsType=${discogsType}`,
-        { cache: "no-store" },
-      );
-      if (response.status === 401) {
-        redirectToLogin();
-        return;
-      }
-      if (!response.ok) {
-        throw new Error("Failed to load playlists");
-      }
-      const data = (await response.json()) as {
-        playlists?: PlaylistMenuItem[];
-      };
-      setPlaylists(data.playlists ?? []);
-    } catch (requestError) {
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : "Could not load playlists",
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const openMenu = async () => {
-    const nextOpen = !open;
-    setOpen(nextOpen);
-    if (!nextOpen) return;
-    await loadPlaylists();
-  };
-
   const toggleMembership = async (playlistId: number, include: boolean) => {
     if (pending) return;
     setPending(true);
     setError(null);
 
-    setPlaylists((prev) =>
-      prev.map((item) =>
-        item.id === playlistId
-          ? { ...item, includesRelease: include }
-          : item,
+    const previous = playlists;
+    queryClient.setQueryData<PlaylistMenuItem[]>(
+      queryKey,
+      previous.map((item) =>
+        item.id === playlistId ? { ...item, includesRelease: include } : item,
       ),
     );
 
     try {
-      const response = await fetch("/api/playlists", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          playlistId,
-          action: include ? "include" : "exclude",
-          release,
-        }),
+      await updatePlaylistMembership({
+        playlistId,
+        action: include ? "include" : "exclude",
+        release,
       });
-
-      if (response.status === 401) {
-        redirectToLogin();
-        return;
-      }
-
-      if (!response.ok) {
-        throw new Error("Failed to update playlist");
-      }
     } catch (requestError) {
-      setPlaylists((prev) =>
-        prev.map((item) =>
-          item.id === playlistId
-            ? { ...item, includesRelease: !include }
-            : item,
-        ),
-      );
+      queryClient.setQueryData(queryKey, previous);
       setError(
         requestError instanceof Error
           ? requestError.message
@@ -127,44 +84,24 @@ export function PlaylistMenuButton({
       );
     } finally {
       setPending(false);
+      void queryClient.invalidateQueries({ queryKey: ["playlists"] });
     }
   };
 
-  const createPlaylist = async () => {
+  const handleCreatePlaylist = async () => {
     const trimmed = newName.trim();
     if (!trimmed || creating) return;
+
     setCreating(true);
     setError(null);
     try {
-      const response = await fetch("/api/playlists", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: trimmed }),
-      });
-
-      if (response.status === 401) {
-        redirectToLogin();
-        return;
-      }
-      if (!response.ok) {
-        throw new Error("Could not create playlist");
-      }
-
-      const data = (await response.json()) as {
-        playlist?: { id: number; name: string };
-      };
-      const createdPlaylist = data.playlist;
-      if (createdPlaylist) {
-        setPlaylists((prev) => [
-          ...prev,
-          {
-            id: createdPlaylist.id,
-            name: createdPlaylist.name,
-            includesRelease: false,
-          },
-        ]);
-      }
+      const created = await createPlaylist(trimmed);
+      queryClient.setQueryData<PlaylistMenuItem[]>(queryKey, [
+        ...playlists,
+        { ...created, includesRelease: false },
+      ]);
       setNewName("");
+      void queryClient.invalidateQueries({ queryKey: ["playlists"] });
     } catch (requestError) {
       setError(
         requestError instanceof Error
@@ -182,7 +119,7 @@ export function PlaylistMenuButton({
     <div ref={containerRef} className="relative">
       <button
         type="button"
-        onClick={() => void openMenu()}
+        onClick={() => setOpen((value) => !value)}
         className={
           "flex h-8 w-8 items-center justify-center rounded-full border transition-colors " +
           (hasMembership
@@ -206,7 +143,7 @@ export function PlaylistMenuButton({
             playlists
           </p>
 
-          {loading ? (
+          {isLoading || (isFetching && playlists.length === 0) ? (
             <p className="px-1 pb-2 font-mono text-[10px] uppercase tracking-[0.12em] text-(--color-foreground-subtle)">
               loading...
             </p>
@@ -263,7 +200,7 @@ export function PlaylistMenuButton({
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
                   event.preventDefault();
-                  void createPlaylist();
+                  void handleCreatePlaylist();
                 }
               }}
               placeholder="New playlist"
@@ -271,18 +208,14 @@ export function PlaylistMenuButton({
             />
             <button
               type="button"
-              onClick={() => void createPlaylist()}
+              onClick={() => void handleCreatePlaylist()}
               disabled={creating || newName.trim().length === 0}
               className="flex h-8 w-8 items-center justify-center rounded-sm border border-(--color-border) text-(--color-foreground-subtle) transition-colors hover:border-(--color-border-strong) hover:text-(--color-foreground) disabled:opacity-50"
               aria-label="Create playlist"
               title="Create playlist"
             >
               {creating ? (
-                <LoaderCircle
-                  size={12}
-                  aria-hidden="true"
-                  className="animate-spin"
-                />
+                <LoaderCircle size={12} aria-hidden="true" className="animate-spin" />
               ) : (
                 <Plus size={12} aria-hidden="true" />
               )}
