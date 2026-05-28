@@ -52,6 +52,9 @@ export interface HomeShowcaseState {
   closeFavorites: () => void;
   openPlaylists: () => void;
   closePlaylists: () => void;
+  aboutOpen: boolean;
+  openAbout: () => void;
+  closeAbout: () => void;
 }
 
 export function useHomeShowcaseState(): HomeShowcaseState {
@@ -62,6 +65,7 @@ export function useHomeShowcaseState(): HomeShowcaseState {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [favoritesOpen, setFavoritesOpen] = useState(false);
   const [playlistsOpen, setPlaylistsOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
 
   const inflight = useRef<AbortController | null>(null);
 
@@ -195,5 +199,8 @@ export function useHomeShowcaseState(): HomeShowcaseState {
     closeFavorites: () => setFavoritesOpen(false),
     openPlaylists: () => setPlaylistsOpen(true),
     closePlaylists: () => setPlaylistsOpen(false),
+    aboutOpen,
+    openAbout: () => setAboutOpen(true),
+    closeAbout: () => setAboutOpen(false),
   };
 }

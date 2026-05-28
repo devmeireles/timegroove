@@ -11,11 +11,13 @@ interface AuthUser {
 interface AvatarMenuProps {
   onRequestFavorites: () => void;
   onRequestPlaylists: () => void;
+  onRequestAbout?: () => void;
 }
 
 export function AvatarMenu({
   onRequestFavorites,
   onRequestPlaylists,
+  onRequestAbout,
 }: AvatarMenuProps) {
   const [open, setOpen] = useState(false);
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -127,6 +129,19 @@ export function AvatarMenu({
               >
                 Playlists
               </button>
+              
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setOpen(false);
+                  onRequestAbout?.();
+                }}
+                className="block w-full rounded-sm px-2 py-1.5 text-left font-mono text-[11px] uppercase tracking-[0.12em] text-(--color-foreground-muted) transition-colors hover:bg-(--color-surface) hover:text-(--color-accent)"
+              >
+                About
+              </button>
+              <div className="my-1 h-px bg-(--color-border)" />
               <a
                 role="menuitem"
                 href="/auth/logout"

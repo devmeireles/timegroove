@@ -1,6 +1,7 @@
 "use client";
 
 import { FavoritesDialog } from "@/components/auth/dialogs/FavoritesDialog";
+import { AboutModal } from "@/components/auth/dialogs/AboutModal";
 import { PlaylistsDialog } from "@/components/auth/dialogs/PlaylistsDialog";
 import { FilterPanel } from "@/components/filters/FilterPanel";
 import { MainPane } from "@/components/layout/MainPane";
@@ -22,6 +23,7 @@ export function HomeShowcase({ state }: HomeShowcaseProps) {
           onReset={state.handleReset}
           onRequestFavorites={state.openFavorites}
           onRequestPlaylists={state.openPlaylists}
+          onRequestAbout={state.openAbout}
           isLoading={state.isLoading}
         />
       </div>
@@ -40,6 +42,7 @@ export function HomeShowcase({ state }: HomeShowcaseProps) {
       </main>
       <NowPlayingPane />
       <FavoritesDialog open={state.favoritesOpen} onClose={state.closeFavorites} />
+      <AboutModal open={state.aboutOpen} onClose={state.closeAbout} />
       <PlaylistsDialog open={state.playlistsOpen} onClose={state.closePlaylists} />
     </div>
   );

@@ -17,6 +17,7 @@ interface FilterPanelProps {
   onReset: () => void;
   onRequestFavorites: () => void;
   onRequestPlaylists: () => void;
+  onRequestAbout?: () => void;
   isLoading: boolean;
 }
 
@@ -27,6 +28,7 @@ export function FilterPanel({
   onReset,
   onRequestFavorites,
   onRequestPlaylists,
+  onRequestAbout,
   isLoading,
 }: FilterPanelProps) {
   const yearId = useId();
@@ -111,6 +113,7 @@ export function FilterPanel({
         <AvatarMenu
           onRequestFavorites={onRequestFavorites}
           onRequestPlaylists={onRequestPlaylists}
+          onRequestAbout={onRequestAbout}
         />
       </div>
     </form>
