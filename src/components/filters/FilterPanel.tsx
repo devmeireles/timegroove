@@ -15,6 +15,8 @@ interface FilterPanelProps {
   onChange: (next: DiscogsSearchFilters) => void;
   onSubmit: () => void;
   onReset: () => void;
+  onRequestFavorites: () => void;
+  onRequestPlaylists: () => void;
   isLoading: boolean;
 }
 
@@ -23,6 +25,8 @@ export function FilterPanel({
   onChange,
   onSubmit,
   onReset,
+  onRequestFavorites,
+  onRequestPlaylists,
   isLoading,
 }: FilterPanelProps) {
   const yearId = useId();
@@ -104,7 +108,10 @@ export function FilterPanel({
       </div>
 
       <div className="flex justify-end pb-px">
-        <AvatarMenu />
+        <AvatarMenu
+          onRequestFavorites={onRequestFavorites}
+          onRequestPlaylists={onRequestPlaylists}
+        />
       </div>
     </form>
   );

@@ -2,6 +2,8 @@
 
 import { useCallback, useMemo, useRef, useState } from "react";
 
+import { FavoritesDialog } from "@/components/auth/dialogs/FavoritesDialog";
+import { PlaylistsDialog } from "@/components/auth/dialogs/PlaylistsDialog";
 import { FilterPanel } from "@/components/filters/FilterPanel";
 import { MainPane } from "@/components/layout/MainPane";
 import { NowPlayingPane } from "@/components/results/NowPlayingPane";
@@ -48,6 +50,8 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [favoritesOpen, setFavoritesOpen] = useState(false);
+  const [playlistsOpen, setPlaylistsOpen] = useState(false);
 
   const inflight = useRef<AbortController | null>(null);
 
@@ -180,6 +184,8 @@ export default function HomePage() {
             onChange={setFilters}
             onSubmit={handleSubmit}
             onReset={handleReset}
+            onRequestFavorites={() => setFavoritesOpen(true)}
+            onRequestPlaylists={() => setPlaylistsOpen(true)}
             isLoading={isLoading}
           />
         </div>
@@ -197,6 +203,14 @@ export default function HomePage() {
           />
         </main>
         <NowPlayingPane />
+        <FavoritesDialog
+          open={favoritesOpen}
+          onClose={() => setFavoritesOpen(false)}
+        />
+        <PlaylistsDialog
+          open={playlistsOpen}
+          onClose={() => setPlaylistsOpen(false)}
+        />
       </div>
     </YoutubePlayerProvider>
   );
