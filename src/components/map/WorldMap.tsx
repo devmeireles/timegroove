@@ -49,12 +49,18 @@ interface MapPosition {
   zoom: number;
 }
 
+interface MousePosition {
+  x: number;
+  y: number;
+}
+
 export function WorldMap({
   selectedCountry,
   onSelectCountry,
   rightInset = 0,
 }: WorldMapProps) {
   const [hovered, setHovered] = useState<string | null>(null);
+  const [mousePos, setMousePos] = useState<MousePosition>({ x: 0, y: 0 });
   const [position, setPosition] = useState<MapPosition>({
     coordinates: INITIAL_CENTER,
     zoom: INITIAL_ZOOM,
@@ -130,6 +136,9 @@ export function WorldMap({
                     key={geo.rsmKey}
                     geography={geo}
                     onMouseEnter={() => setHovered(name)}
+                    onMouseMove={(e: React.MouseEvent) => {
+                      setMousePos({ x: e.clientX, y: e.clientY });
+                    }}
                     onMouseLeave={() => setHovered(null)}
                     onClick={() => handleClick(name)}
                     style={{
@@ -180,6 +189,18 @@ export function WorldMap({
           <span className="px-2 text-(--color-border-strong)">/</span>
         )}
       </div>
+
+      {hovered && (
+        <div
+          className="pointer-events-none fixed px-2 py-1 rounded bg-surface border border-(--color-border) shadow-lg text-xs font-mono text-(--color-foreground) whitespace-nowrap z-50"
+          style={{
+            left: `${mousePos.x + 8}px`,
+            top: `${mousePos.y + 8}px`,
+          }}
+        >
+          {hovered}
+        </div>
+      )}
 
       <ZoomControls
         zoom={position.zoom}
