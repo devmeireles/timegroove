@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Heart,
   LoaderCircle,
@@ -14,6 +14,7 @@ import {
 import { CoverArt } from "@/components/common/CoverArt";
 import { AlbumDetailDialog } from "@/components/details/AlbumDetailDialog";
 import { PlaylistMenuButton } from "@/components/playlists/PlaylistMenuButton";
+import { useFavoritesContext } from "@/contexts/FavoritesContext";
 import { useYoutubePlayerContext } from "@/contexts/YoutubePlayerContext";
 import { splitDiscogsTitle } from "@/lib/text/normalize";
 
@@ -37,95 +38,7 @@ export function NowPlayingPane() {
   } = useYoutubePlayerContext();
 
   const [detailOpen, setDetailOpen] = useState(false);
-  const [favoriteKeys, setFavoriteKeys] = useState<Set<string>>(new Set());
-  const [favoritePending, setFavoritePending] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    const controller = new AbortController();
-    async function loadFavorites() {
-      try {
-        const response = await fetch("/api/favorites", {
-          signal: controller.signal,
-          cache: "no-store",
-        });
-        if (!response.ok) {
-          setFavoriteKeys(new Set());
-          return;
-        }
-        const data = (await response.json()) as {
-          favorites?: Array<{ discogsId: number; discogsType: "release" | "master" }>;
-        };
-        const next = new Set<string>();
-        for (const item of data.favorites ?? []) {
-          next.add(`${item.discogsType}:${item.discogsId}`);
-        }
-        setFavoriteKeys(next);
-      } catch {
-        setFavoriteKeys(new Set());
-      }
-    }
-    void loadFavorites();
-    return () => controller.abort();
-  }, []);
-
-  const discogsType: "release" | "master" =
-    loadedRelease?.type === "master" ? "master" : "release";
-  const favoriteKey = loadedRelease ? `${discogsType}:${loadedRelease.id}` : "";
-  const isFavorite = favoriteKeys.has(favoriteKey);
-  const isFavoritePending = favoritePending.has(favoriteKey);
-
-  const toggleFavorite = useCallback(async () => {
-    if (!loadedRelease || favoritePending.has(favoriteKey)) return;
-
-    const currentlyFavorite = favoriteKeys.has(favoriteKey);
-    setFavoritePending((prev) => new Set(prev).add(favoriteKey));
-    setFavoriteKeys((prev) => {
-      const next = new Set(prev);
-      if (currentlyFavorite) next.delete(favoriteKey);
-      else next.add(favoriteKey);
-      return next;
-    });
-
-    try {
-      const response = currentlyFavorite
-        ? await fetch(
-            `/api/favorites?discogsId=${loadedRelease.id}&discogsType=${discogsType}`,
-            { method: "DELETE" },
-          )
-        : await fetch("/api/favorites", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ release: loadedRelease }),
-          });
-
-      if (response.status === 401) {
-        window.location.href = "/auth/login";
-        return;
-      }
-
-      if (!response.ok) {
-        setFavoriteKeys((prev) => {
-          const next = new Set(prev);
-          if (currentlyFavorite) next.add(favoriteKey);
-          else next.delete(favoriteKey);
-          return next;
-        });
-      }
-    } catch {
-      setFavoriteKeys((prev) => {
-        const next = new Set(prev);
-        if (currentlyFavorite) next.add(favoriteKey);
-        else next.delete(favoriteKey);
-        return next;
-      });
-    } finally {
-      setFavoritePending((prev) => {
-        const next = new Set(prev);
-        next.delete(favoriteKey);
-        return next;
-      });
-    }
-  }, [discogsType, favoriteKey, favoriteKeys, favoritePending, loadedRelease]);
+  const { isFavorite, isFavoritePending, toggleFavorite } = useFavoritesContext();
 
   if (!loadedRelease) return null;
 
@@ -204,9 +117,9 @@ export function NowPlayingPane() {
 
         <div className="flex items-center justify-end gap-2">
           <FavoriteButton
-            isFavorite={isFavorite}
-            isPending={isFavoritePending}
-            onToggle={toggleFavorite}
+            isFavorite={isFavorite(loadedRelease)}
+            isPending={isFavoritePending(loadedRelease)}
+            onToggle={() => void toggleFavorite(loadedRelease)}
           />
           <PlaylistMenuButton release={loadedRelease} direction="up" />
           <CloseButton onClick={stop} />

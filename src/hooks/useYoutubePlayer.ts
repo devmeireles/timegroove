@@ -207,11 +207,7 @@ export function useYoutubePlayer(): UseYoutubePlayer {
   }, []);
 
   useEffect(() => {
-    if (!loadedRelease) {
-      setCurrentTimeSec(0);
-      setDurationSec(0);
-      return;
-    }
+    if (!loadedRelease) return;
 
     const timer = window.setInterval(() => {
       const player = playerRef.current;
@@ -295,7 +291,7 @@ export function useYoutubePlayer(): UseYoutubePlayer {
 
       return initPromiseRef.current;
     },
-    [],
+    [playByOffset],
   );
 
   const playRelease = useCallback(

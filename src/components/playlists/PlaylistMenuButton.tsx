@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, ListPlus, LoaderCircle, Plus, X } from "lucide-react";
 
+import { redirectToLogin } from "@/lib/client/navigation";
 import type { NormalizedRelease } from "@/types/discogs";
 
 interface PlaylistMenuItem {
@@ -51,7 +52,7 @@ export function PlaylistMenuButton({
         { cache: "no-store" },
       );
       if (response.status === 401) {
-        window.location.href = "/auth/login";
+        redirectToLogin();
         return;
       }
       if (!response.ok) {
@@ -104,7 +105,7 @@ export function PlaylistMenuButton({
       });
 
       if (response.status === 401) {
-        window.location.href = "/auth/login";
+        redirectToLogin();
         return;
       }
 
@@ -142,7 +143,7 @@ export function PlaylistMenuButton({
       });
 
       if (response.status === 401) {
-        window.location.href = "/auth/login";
+        redirectToLogin();
         return;
       }
       if (!response.ok) {

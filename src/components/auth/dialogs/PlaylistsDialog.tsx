@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { AccountDialogShell } from "@/components/auth/dialogs/AccountDialogShell";
+import { redirectToLogin } from "@/lib/client/navigation";
 
 interface PlaylistItem {
   id: number;
@@ -34,7 +35,7 @@ export function PlaylistsDialog({ open, onClose }: PlaylistsDialogProps) {
         });
         if (controller.signal.aborted) return;
         if (response.status === 401) {
-          window.location.href = "/auth/login";
+          redirectToLogin();
           return;
         }
         if (!response.ok) {

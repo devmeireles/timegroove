@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import { CoverArt } from "@/components/common/CoverArt";
 import { AccountDialogShell } from "@/components/auth/dialogs/AccountDialogShell";
+import { redirectToLogin } from "@/lib/client/navigation";
 
 interface FavoriteItem {
   id: number;
@@ -40,7 +41,7 @@ export function FavoritesDialog({ open, onClose }: FavoritesDialogProps) {
         });
         if (controller.signal.aborted) return;
         if (response.status === 401) {
-          window.location.href = "/auth/login";
+          redirectToLogin();
           return;
         }
         if (!response.ok) {

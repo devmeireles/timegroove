@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { ExternalLink as ExternalLinkIcon, Heart, LoaderCircle, X } from "lucide-react";
 
 import { CoverArt } from "@/components/common/CoverArt";
 import { Dialog } from "@/components/details/Dialog";
 import { PlaylistMenuButton } from "@/components/playlists/PlaylistMenuButton";
+import { useFavoritesContext } from "@/contexts/FavoritesContext";
 import { fetchDiscogsArtist } from "@/lib/clientArtist";
 import { fetchDiscogsDetail } from "@/lib/clientDetail";
 import { splitDiscogsTitle } from "@/lib/text/normalize";
@@ -160,71 +161,7 @@ function DialogBody({
   artistState: ArtistState;
   onClose: () => void;
 }) {
-  const discogsType: "release" | "master" =
-    release.type === "master" ? "master" : "release";
-  const favoriteKey = `${discogsType}:${release.id}`;
-  const [isFavorite, setIsFavorite] = useState(false);
-  const [isFavoritePending, setIsFavoritePending] = useState(false);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    async function loadFavoriteState() {
-      try {
-        const response = await fetch("/api/favorites", {
-          signal: controller.signal,
-          cache: "no-store",
-        });
-        if (!response.ok) {
-          setIsFavorite(false);
-          return;
-        }
-        const data = (await response.json()) as {
-          favorites?: Array<{ discogsId: number; discogsType: "release" | "master" }>;
-        };
-        const match = (data.favorites ?? []).some(
-          (item) => item.discogsId === release.id && item.discogsType === discogsType,
-        );
-        setIsFavorite(match);
-      } catch {
-        setIsFavorite(false);
-      }
-    }
-    void loadFavoriteState();
-    return () => controller.abort();
-  }, [discogsType, favoriteKey, release.id]);
-
-  const toggleFavorite = useCallback(async () => {
-    if (isFavoritePending) return;
-    const currentlyFavorite = isFavorite;
-    setIsFavoritePending(true);
-    setIsFavorite(!currentlyFavorite);
-
-    try {
-      const response = currentlyFavorite
-        ? await fetch(
-            `/api/favorites?discogsId=${release.id}&discogsType=${discogsType}`,
-            { method: "DELETE" },
-          )
-        : await fetch("/api/favorites", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ release }),
-          });
-
-      if (response.status === 401) {
-        window.location.href = "/auth/login";
-        return;
-      }
-
-      if (!response.ok) {
-        setIsFavorite(currentlyFavorite);
-      }
-    } catch {
-      setIsFavorite(currentlyFavorite);
-    } finally {
-      setIsFavoritePending(false);
-    }
-  }, [discogsType, isFavorite, isFavoritePending, release]);
+  const { isFavorite, isFavoritePending, toggleFavorite } = useFavoritesContext();
 
   const fallbackParsed = splitDiscogsTitle(release.title ?? "");
   const ready = detail.kind === "ready" ? detail.detail : null;
@@ -259,9 +196,9 @@ function DialogBody({
         <div className="flex items-center gap-2">
           <PlaylistMenuButton release={release} />
           <FavoriteButton
-            isFavorite={isFavorite}
-            isPending={isFavoritePending}
-            onToggle={toggleFavorite}
+            isFavorite={isFavorite(release)}
+            isPending={isFavoritePending(release)}
+            onToggle={() => void toggleFavorite(release)}
           />
           <CloseButton onClick={onClose} />
         </div>

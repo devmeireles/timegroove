@@ -7,6 +7,7 @@ import { PlaylistsDialog } from "@/components/auth/dialogs/PlaylistsDialog";
 import { FilterPanel } from "@/components/filters/FilterPanel";
 import { MainPane } from "@/components/layout/MainPane";
 import { NowPlayingPane } from "@/components/results/NowPlayingPane";
+import { FavoritesProvider } from "@/contexts/FavoritesContext";
 import { YoutubePlayerProvider } from "@/contexts/YoutubePlayerContext";
 import {
   SearchRequestError,
@@ -177,41 +178,43 @@ export default function HomePage() {
 
   return (
     <YoutubePlayerProvider>
-      <div className="flex h-screen w-screen flex-col overflow-hidden">
-        <div className="shrink-0 border-b border-(--color-border) bg-(--color-surface)">
-          <FilterPanel
-            values={filters}
-            onChange={setFilters}
-            onSubmit={handleSubmit}
-            onReset={handleReset}
-            onRequestFavorites={() => setFavoritesOpen(true)}
-            onRequestPlaylists={() => setPlaylistsOpen(true)}
-            isLoading={isLoading}
+      <FavoritesProvider>
+        <div className="flex h-screen w-screen flex-col overflow-hidden">
+          <div className="shrink-0 border-b border-(--color-border) bg-(--color-surface)">
+            <FilterPanel
+              values={filters}
+              onChange={setFilters}
+              onSubmit={handleSubmit}
+              onReset={handleReset}
+              onRequestFavorites={() => setFavoritesOpen(true)}
+              onRequestPlaylists={() => setPlaylistsOpen(true)}
+              isLoading={isLoading}
+            />
+          </div>
+          <main className="min-h-0 flex-1 overflow-hidden">
+            <MainPane
+              data={data}
+              error={error}
+              lastQuery={queue.query}
+              selectedCountry={filters.country ?? null}
+              onSelectCountry={handleSelectCountry}
+              pagesLoaded={queue.pagesLoaded}
+              hasMore={hasMore}
+              isLoadingMore={isLoadingMore}
+              onLoadMore={loadMore}
+            />
+          </main>
+          <NowPlayingPane />
+          <FavoritesDialog
+            open={favoritesOpen}
+            onClose={() => setFavoritesOpen(false)}
+          />
+          <PlaylistsDialog
+            open={playlistsOpen}
+            onClose={() => setPlaylistsOpen(false)}
           />
         </div>
-        <main className="min-h-0 flex-1 overflow-hidden">
-          <MainPane
-            data={data}
-            error={error}
-            lastQuery={queue.query}
-            selectedCountry={filters.country ?? null}
-            onSelectCountry={handleSelectCountry}
-            pagesLoaded={queue.pagesLoaded}
-            hasMore={hasMore}
-            isLoadingMore={isLoadingMore}
-            onLoadMore={loadMore}
-          />
-        </main>
-        <NowPlayingPane />
-        <FavoritesDialog
-          open={favoritesOpen}
-          onClose={() => setFavoritesOpen(false)}
-        />
-        <PlaylistsDialog
-          open={playlistsOpen}
-          onClose={() => setPlaylistsOpen(false)}
-        />
-      </div>
+      </FavoritesProvider>
     </YoutubePlayerProvider>
   );
 }
