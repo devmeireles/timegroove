@@ -4,6 +4,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 
 import { getOrm } from "@/db/orm";
 import { appPlaylistItems, appPlaylists } from "@/db/schema";
+import { getReleaseDiscogsType } from "@/lib/discogs/releaseIdentity";
 import type { NormalizedRelease } from "@/types/discogs";
 
 export interface PlaylistRecord {
@@ -120,8 +121,7 @@ export async function includeReleaseInPlaylist(
 
   const db = await getOrm();
   const now = new Date().toISOString();
-  const discogsType: "release" | "master" =
-    release.type === "master" ? "master" : "release";
+  const discogsType = getReleaseDiscogsType(release);
 
   await db
     .insert(appPlaylistItems)

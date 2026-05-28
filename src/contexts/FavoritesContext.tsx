@@ -14,9 +14,13 @@ import {
   addFavorite,
   fetchFavorites,
   removeFavorite,
-  type DiscogsType,
   type FavoriteItem,
 } from "@/services/client/libraryApi";
+import { queryKeys } from "@/lib/client/queryKeys";
+import {
+  buildFavoriteIdentityKey,
+  getReleaseDiscogsType,
+} from "@/lib/discogs/releaseIdentity";
 import type { NormalizedRelease } from "@/types/discogs";
 
 interface FavoritesContextValue {
@@ -25,24 +29,19 @@ interface FavoritesContextValue {
   toggleFavorite: (release: NormalizedRelease) => Promise<void>;
 }
 
-export const FAVORITES_QUERY_KEY = ["favorites"] as const;
+export const FAVORITES_QUERY_KEY = queryKeys.favorites.all;
 
 const FavoritesContext = createContext<FavoritesContextValue | null>(null);
 
-function getDiscogsType(release: NormalizedRelease): DiscogsType {
-  return release.type === "master" ? "master" : "release";
-}
-
-function buildFavoriteKey(discogsId: number, discogsType: DiscogsType): string {
-  return `${discogsType}:${discogsId}`;
-}
-
 function getReleaseFavoriteKey(release: NormalizedRelease): string {
-  return buildFavoriteKey(release.id, getDiscogsType(release));
+  return buildFavoriteIdentityKey({
+    discogsId: release.id,
+    discogsType: getReleaseDiscogsType(release),
+  });
 }
 
 function buildOptimisticFavorite(release: NormalizedRelease): FavoriteItem {
-  const discogsType = getDiscogsType(release);
+  const discogsType = getReleaseDiscogsType(release);
   return {
     id: -release.id,
     userId: 0,
@@ -68,15 +67,23 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
   const favoriteKeys = useMemo(() => {
     const keys = new Set<string>();
     for (const item of favorites) {
-      keys.add(buildFavoriteKey(item.discogsId, item.discogsType));
+      keys.add(
+        buildFavoriteIdentityKey({
+          discogsId: item.discogsId,
+          discogsType: item.discogsType,
+        }),
+      );
     }
     return keys;
   }, [favorites]);
 
   const toggleFavorite = useCallback(
     async (release: NormalizedRelease) => {
-      const discogsType = getDiscogsType(release);
-      const key = buildFavoriteKey(release.id, discogsType);
+      const discogsType = getReleaseDiscogsType(release);
+      const key = buildFavoriteIdentityKey({
+        discogsId: release.id,
+        discogsType,
+      });
       if (favoritePending.has(key)) return;
 
       const currentlyFavorite = favoriteKeys.has(key);

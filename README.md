@@ -67,7 +67,9 @@ External integrations and reconciliation logic.
 - `src/repositories/`:
 Database persistence concerns.
 - `src/db/sqlite.ts`:
-Database client and schema bootstrap.
+Database client.
+- `drizzle/` + `src/db/schema.ts`:
+Versioned Drizzle migrations and schema definitions.
 - `src/contexts/YoutubePlayerContext.tsx` + `src/hooks/useYoutubePlayer.ts`:
 Shared hidden YouTube player state and controls.
 
@@ -108,6 +110,17 @@ Open `http://localhost:3000`.
 ```bash
 npm run build
 ```
+
+### Database migrations
+
+Schema changes are managed with Drizzle:
+
+```bash
+npm run db:generate -- --name your_migration_name
+npm run db:migrate
+```
+
+`dev`, `build`, and `start` run `db:migrate` first so deployed/runtime schema stays in sync with code.
 
 ## API Surfaces (Core)
 

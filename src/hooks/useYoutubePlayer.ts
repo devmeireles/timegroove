@@ -2,6 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import {
+  getReleaseDiscogsType,
+  getReleaseIdentityKey,
+} from "@/lib/discogs/releaseIdentity";
 import type { NormalizedRelease } from "@/types/discogs";
 import type { EnrichedSpotify } from "@/types/reconciliation";
 
@@ -143,11 +147,6 @@ export interface UseYoutubePlayer {
   stop: () => void;
 }
 
-function releaseKey(release: NormalizedRelease): string {
-  const type = release.type === "master" ? "master" : "release";
-  return `${type}-${release.id}`;
-}
-
 export function useYoutubePlayer(): UseYoutubePlayer {
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<YTPlayer | null>(null);
@@ -178,8 +177,7 @@ export function useYoutubePlayer(): UseYoutubePlayer {
     const currentIndex = queue.findIndex(
       (item) =>
         item.release.id === current.id &&
-        (item.release.type === "master" ? "master" : "release") ===
-          (current.type === "master" ? "master" : "release"),
+        getReleaseDiscogsType(item.release) === getReleaseDiscogsType(current),
     );
     if (currentIndex < 0) return;
 
@@ -296,8 +294,8 @@ export function useYoutubePlayer(): UseYoutubePlayer {
 
   const playRelease = useCallback(
     async ({ release, spotify }: PlayReleaseInput) => {
-      const key = releaseKey(release);
-      const currentKey = loadedRelease ? releaseKey(loadedRelease) : null;
+      const key = getReleaseIdentityKey(release);
+      const currentKey = loadedRelease ? getReleaseIdentityKey(loadedRelease) : null;
 
       // Toggle if the same release is already loaded.
       if (currentKey === key && playerRef.current) {
@@ -315,8 +313,7 @@ export function useYoutubePlayer(): UseYoutubePlayer {
         return next;
       });
 
-      const discogsType: "release" | "master" =
-        release.type === "master" ? "master" : "release";
+      const discogsType = getReleaseDiscogsType(release);
 
       let videoId: string | null;
       try {

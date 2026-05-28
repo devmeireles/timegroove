@@ -1,9 +1,10 @@
 "use client";
 
 import { redirectToLogin } from "@/lib/client/navigation";
+import type { DiscogsReleaseType } from "@/lib/discogs/releaseIdentity";
 import type { NormalizedRelease } from "@/types/discogs";
 
-export type DiscogsType = "release" | "master";
+export type DiscogsType = DiscogsReleaseType;
 
 export interface FavoriteItem {
   id: number;

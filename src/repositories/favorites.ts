@@ -4,6 +4,7 @@ import { and, desc, eq } from "drizzle-orm";
 
 import { getOrm } from "@/db/orm";
 import { appUserFavorites } from "@/db/schema";
+import { getReleaseDiscogsType } from "@/lib/discogs/releaseIdentity";
 import type { NormalizedRelease } from "@/types/discogs";
 
 export interface FavoriteRecord {
@@ -45,8 +46,7 @@ export async function addFavorite(
 ): Promise<void> {
   const db = await getOrm();
   const now = new Date().toISOString();
-  const discogsType: "release" | "master" =
-    release.type === "master" ? "master" : "release";
+  const discogsType = getReleaseDiscogsType(release);
 
   const coverUrl = release.coverImage ?? release.thumb ?? null;
 

@@ -1,14 +1,19 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { LoaderCircle } from "lucide-react";
 
 import { AlbumDetailDialog } from "@/components/details/AlbumDetailDialog";
 import { ReconcileLoadingState } from "@/components/results/ReconcileLoadingState";
 import { ReleaseCard } from "@/components/results/ReleaseCard";
 import { useFavoritesContext } from "@/contexts/FavoritesContext";
-import { useYoutubePlayerContext } from "@/contexts/YoutubePlayerContext";
+import { useYoutubePlayerControllerContext } from "@/contexts/YoutubePlayerContext";
 import { useReconcile, type ReconcileState } from "@/hooks/useReconcile";
+import {
+  getReleaseDiscogsType,
+  getReleaseIdentityKey,
+} from "@/lib/discogs/releaseIdentity";
 import type {
   NormalizedRelease,
   NormalizedSearchResponse,
@@ -49,7 +54,7 @@ export function ReleaseList({
     resolveStatus,
     registerQueue,
     playRelease,
-  } = useYoutubePlayerContext();
+  } = useYoutubePlayerControllerContext();
   void _ignoredContainer;
   const [detailItem, setDetailItem] = useState<{
     release: NormalizedRelease;
@@ -113,6 +118,17 @@ export function ReleaseList({
   // duplicate loadMore calls.
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
+  // eslint-disable-next-line react-hooks/incompatible-library
+  const rowVirtualizer = useVirtualizer({
+    count: sorted.length + 1,
+    getScrollElement: () => scrollContainerRef.current,
+    estimateSize: () => 116,
+    overscan: 8,
+    getItemKey: (index) =>
+      index === sorted.length
+        ? "pagination-footer"
+        : getReleaseIdentityKey(sorted[index].release),
+  });
   useEffect(() => {
     if (!hasMore || isLoadingMore) return;
     const root = scrollContainerRef.current;
@@ -170,48 +186,71 @@ export function ReleaseList({
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
-        className="flex flex-1 flex-col gap-3 overflow-y-auto px-4 py-4"
+        className="flex-1 overflow-y-auto px-4 py-4"
       >
-        {sorted.map(({ release }) => {
-          const discogsType: "release" | "master" =
-            release.type === "master" ? "master" : "release";
-          const key = `${discogsType}-${release.id}`;
-          const reconcileState = enrichment.get(release.id);
-          const enrichedSpotify =
-            reconcileState && "enriched" in reconcileState
-              ? reconcileState.enriched.spotify
-              : null;
-          const isLoaded =
-            loadedRelease != null &&
-            loadedRelease.id === release.id &&
-            (loadedRelease.type === "master" ? "master" : "release") ===
-              discogsType;
-          return (
-            <ReleaseCard
-              key={key}
-              release={release}
-              state={reconcileState}
-              isLoaded={isLoaded}
-              isPlaying={isPlaying}
-              isFavorite={isFavorite(release)}
-              isFavoritePending={isFavoritePending(release)}
-              onToggleFavorite={() => void toggleFavorite(release)}
-              resolveStatus={resolveStatus.get(key)}
-              onPlay={() =>
-                playRelease({ release, spotify: enrichedSpotify })
-              }
-              onOpenDetail={() =>
-                setDetailItem({ release, spotify: enrichedSpotify })
-              }
-            />
-          );
-        })}
+        <div
+          className="relative w-full"
+          style={{ height: `${rowVirtualizer.getTotalSize()}px` }}
+        >
+          {rowVirtualizer.getVirtualItems().map((virtualItem) => {
+            if (virtualItem.index === sorted.length) {
+              return (
+                <div
+                  key={virtualItem.key}
+                  ref={rowVirtualizer.measureElement}
+                  data-index={virtualItem.index}
+                  className="absolute top-0 left-0 w-full"
+                  style={{ transform: `translateY(${virtualItem.start}px)` }}
+                >
+                  <PaginationFooter
+                    hasMore={hasMore}
+                    isLoadingMore={isLoadingMore}
+                    sentinelRef={sentinelRef}
+                  />
+                </div>
+              );
+            }
 
-        <PaginationFooter
-          hasMore={hasMore}
-          isLoadingMore={isLoadingMore}
-          sentinelRef={sentinelRef}
-        />
+            const { release } = sorted[virtualItem.index];
+            const discogsType = getReleaseDiscogsType(release);
+            const key = getReleaseIdentityKey(release);
+            const reconcileState = enrichment.get(release.id);
+            const enrichedSpotify =
+              reconcileState && "enriched" in reconcileState
+                ? reconcileState.enriched.spotify
+                : null;
+            const isLoaded =
+              loadedRelease != null &&
+              loadedRelease.id === release.id &&
+              getReleaseDiscogsType(loadedRelease) === discogsType;
+
+            return (
+              <div
+                key={virtualItem.key}
+                ref={rowVirtualizer.measureElement}
+                data-index={virtualItem.index}
+                className="absolute top-0 left-0 w-full pb-3"
+                style={{ transform: `translateY(${virtualItem.start}px)` }}
+              >
+                <ReleaseCard
+                  key={key}
+                  release={release}
+                  state={reconcileState}
+                  isLoaded={isLoaded}
+                  isPlaying={isPlaying}
+                  isFavorite={isFavorite(release)}
+                  isFavoritePending={isFavoritePending(release)}
+                  onToggleFavorite={() => void toggleFavorite(release)}
+                  resolveStatus={resolveStatus.get(key)}
+                  onPlay={() => playRelease({ release, spotify: enrichedSpotify })}
+                  onOpenDetail={() =>
+                    setDetailItem({ release, spotify: enrichedSpotify })
+                  }
+                />
+              </div>
+            );
+          })}
+        </div>
       </div>
       <AlbumDetailDialog
         release={detailItem?.release ?? null}

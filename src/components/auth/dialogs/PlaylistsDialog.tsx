@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { AccountDialogShell } from "@/components/auth/dialogs/AccountDialogShell";
+import { queryKeys } from "@/lib/client/queryKeys";
 import { fetchPlaylists } from "@/services/client/libraryApi";
 
 interface PlaylistsDialogProps {
@@ -16,7 +17,7 @@ export function PlaylistsDialog({ open, onClose }: PlaylistsDialogProps) {
     isLoading,
     error,
   } = useQuery({
-    queryKey: ["playlists", "all"],
+    queryKey: queryKeys.playlists.list(),
     queryFn: () => fetchPlaylists(),
     enabled: open,
   });

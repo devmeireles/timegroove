@@ -1,9 +1,11 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, ListPlus, LoaderCircle, Plus, X } from "lucide-react";
 
+import { queryKeys } from "@/lib/client/queryKeys";
+import { getReleaseDiscogsType } from "@/lib/discogs/releaseIdentity";
 import {
   createPlaylist,
   fetchPlaylists,
@@ -27,12 +29,8 @@ export function PlaylistMenuButton({
   const containerRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
 
-  const discogsType: "release" | "master" =
-    release.type === "master" ? "master" : "release";
-  const queryKey = useMemo(
-    () => ["playlists", "release", release.id, discogsType] as const,
-    [release.id, discogsType],
-  );
+  const discogsType = getReleaseDiscogsType(release);
+  const queryKey = queryKeys.playlists.forRelease(release.id, discogsType);
 
   const {
     data: playlists = [],
@@ -84,7 +82,7 @@ export function PlaylistMenuButton({
       );
     } finally {
       setPending(false);
-      void queryClient.invalidateQueries({ queryKey: ["playlists"] });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.playlists.all });
     }
   };
 
@@ -101,7 +99,7 @@ export function PlaylistMenuButton({
         { ...created, includesRelease: false },
       ]);
       setNewName("");
-      void queryClient.invalidateQueries({ queryKey: ["playlists"] });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.playlists.all });
     } catch (requestError) {
       setError(
         requestError instanceof Error

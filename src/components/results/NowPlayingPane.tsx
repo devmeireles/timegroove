@@ -15,7 +15,10 @@ import { CoverArt } from "@/components/common/CoverArt";
 import { AlbumDetailDialog } from "@/components/details/AlbumDetailDialog";
 import { PlaylistMenuButton } from "@/components/playlists/PlaylistMenuButton";
 import { useFavoritesContext } from "@/contexts/FavoritesContext";
-import { useYoutubePlayerContext } from "@/contexts/YoutubePlayerContext";
+import {
+  useYoutubePlayerControllerContext,
+  useYoutubePlayerTimingContext,
+} from "@/contexts/YoutubePlayerContext";
 import { splitDiscogsTitle } from "@/lib/text/normalize";
 
 /**
@@ -28,14 +31,13 @@ export function NowPlayingPane() {
     loadedRelease,
     loadedSpotify,
     isPlaying,
-    currentTimeSec,
-    durationSec,
     togglePlay,
     playPrevious,
     playNext,
     seekToProgress,
     stop,
-  } = useYoutubePlayerContext();
+  } = useYoutubePlayerControllerContext();
+  const { currentTimeSec, durationSec } = useYoutubePlayerTimingContext();
 
   const [detailOpen, setDetailOpen] = useState(false);
   const { isFavorite, isFavoritePending, toggleFavorite } = useFavoritesContext();
