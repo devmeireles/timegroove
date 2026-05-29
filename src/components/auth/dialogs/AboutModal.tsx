@@ -10,11 +10,11 @@ interface AboutModalProps {
 
 export function AboutModal({ open, onClose }: AboutModalProps) {
   return (
-    <Dialog open={open} onClose={onClose} ariaLabel="About TimeGroove">
+    <Dialog open={open} onClose={onClose} ariaLabel="About Time Groove">
       <div className="overflow-y-auto max-h-[85vh]">
         <div className="flex items-center justify-between border-b border-(--color-border) px-6 py-4">
           <h2 className="text-lg font-semibold text-(--color-foreground)">
-            About TimeGroove
+            About Time Groove
           </h2>
           <button
             type="button"
@@ -29,7 +29,7 @@ export function AboutModal({ open, onClose }: AboutModalProps) {
         <div className="space-y-4 px-6 py-6 text-(--color-foreground)">
           <div>
             <p className="text-sm leading-relaxed text-(--color-foreground-muted)">
-              <strong>TimeGroove</strong> is an interactive web application that lets you explore 
+              <strong>Time Groove</strong> is an interactive web application that lets you explore 
               music releases by country and time period. Select a country on the map, 
               filter by year and genre, and discover releases from Discogs. Perfect 
               for music collectors, enthusiasts, and researchers interested in global 
@@ -66,7 +66,7 @@ export function AboutModal({ open, onClose }: AboutModalProps) {
           <div>
             <h3 className="mb-2 font-semibold text-base">Data Sources</h3>
             <p className="text-sm text-(--color-foreground-muted)">
-              TimeGroove uses data from{" "}
+              Time Groove uses data from{" "}
               <a
                 href="https://www.discogs.com"
                 target="_blank"

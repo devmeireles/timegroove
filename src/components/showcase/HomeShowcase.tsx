@@ -23,6 +23,7 @@ export function HomeShowcase({ state }: HomeShowcaseProps) {
           onSubmit={state.handleSubmit}
           onReset={state.handleReset}
           onRequestAbout={state.openAbout}
+          onRequestPlaylists={state.openPlaylists}
           onRequestSpotifySettings={state.openSpotifySettings}
           isLoading={state.isLoading}
         />

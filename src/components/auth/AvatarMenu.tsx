@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 
 interface AvatarMenuProps {
   onRequestAbout?: () => void;
+  onRequestPlaylists?: () => void;
   onRequestSpotifySettings?: () => void;
 }
 
@@ -17,6 +18,7 @@ interface UserProfile {
 
 export function AvatarMenu({
   onRequestAbout,
+  onRequestPlaylists,
   onRequestSpotifySettings,
 }: AvatarMenuProps) {
   const [open, setOpen] = useState(false);
@@ -114,11 +116,23 @@ export function AvatarMenu({
           ) : (
             <>
               <p className="px-2 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-(--color-foreground-subtle)">
-                TimeGroove
+                Time Groove
               </p>
               <div className="my-1 h-px bg-(--color-border)" />
             </>
           )}
+
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              onRequestPlaylists?.();
+            }}
+            className="block w-full rounded-sm px-2 py-1.5 text-left font-mono text-[11px] uppercase tracking-[0.12em] text-(--color-foreground-muted) transition-colors hover:bg-(--color-surface) hover:text-(--color-accent)"
+          >
+            Playlists
+          </button>
 
           <button
             type="button"

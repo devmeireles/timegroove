@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 
 import { getOrm } from "@/db/orm";
 import { reconciliationMappings } from "@/db/schema";
@@ -73,6 +73,46 @@ export async function findMapping(
     .limit(1);
 
   return row ? rowToMapping(row) : null;
+}
+
+export async function findMappingsForReleases(
+  releases: Array<{ discogsId: number; discogsType: "release" | "master" }>,
+): Promise<ReconciliationMapping[]> {
+  if (releases.length === 0) return [];
+
+  const db = await getOrm();
+  const discogsIds = [...new Set(releases.map((release) => release.discogsId))];
+  const discogsTypes = [
+    ...new Set(releases.map((release) => release.discogsType)),
+  ] as Array<"release" | "master">;
+  const wantedKeys = new Set(
+    releases.map((release) => `${release.discogsId}:${release.discogsType}`),
+  );
+
+  const rows = await db
+    .select({
+      id: reconciliationMappings.id,
+      discogsId: reconciliationMappings.discogsId,
+      discogsType: reconciliationMappings.discogsType,
+      spotifyArtistId: reconciliationMappings.spotifyArtistId,
+      spotifyAlbumId: reconciliationMappings.spotifyAlbumId,
+      spotifyTrackIds: reconciliationMappings.spotifyTrackIds,
+      confidenceScore: reconciliationMappings.confidenceScore,
+      status: reconciliationMappings.status,
+      matchedAt: reconciliationMappings.matchedAt,
+      rawSpotifyPayload: reconciliationMappings.rawSpotifyPayload,
+    })
+    .from(reconciliationMappings)
+    .where(
+      and(
+        inArray(reconciliationMappings.discogsId, discogsIds),
+        inArray(reconciliationMappings.discogsType, discogsTypes),
+      ),
+    );
+
+  return rows
+    .filter((row) => wantedKeys.has(`${row.discogsId}:${row.discogsType}`))
+    .map(rowToMapping);
 }
 
 export interface UpsertMappingInput {

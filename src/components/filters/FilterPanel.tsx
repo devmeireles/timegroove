@@ -16,6 +16,7 @@ interface FilterPanelProps {
   onSubmit: () => void;
   onReset: () => void;
   onRequestAbout?: () => void;
+  onRequestPlaylists?: () => void;
   onRequestSpotifySettings?: () => void;
   isLoading: boolean;
 }
@@ -26,6 +27,7 @@ export function FilterPanel({
   onSubmit,
   onReset,
   onRequestAbout,
+  onRequestPlaylists,
   onRequestSpotifySettings,
   isLoading,
 }: FilterPanelProps) {
@@ -110,6 +112,7 @@ export function FilterPanel({
       <div className="flex justify-end pb-px">
         <AvatarMenu
           onRequestAbout={onRequestAbout}
+          onRequestPlaylists={onRequestPlaylists}
           onRequestSpotifySettings={onRequestSpotifySettings}
         />
       </div>

@@ -14,7 +14,7 @@ const FEATURES = [
   {
     icon: Radio,
     title: "Real-Time Sync",
-    description: "Synchronize your TimeGroove discoveries directly to your Spotify playlists in seconds. Your crate-dug sessions flow seamlessly to your listening ecosystem.",
+    description: "Synchronize your Time Groove discoveries directly to your Spotify playlists in seconds. Your crate-dug sessions flow seamlessly to your listening ecosystem.",
   },
   {
     icon: Zap,
@@ -136,7 +136,7 @@ export function SpotifySettingsModal({
             <div className="space-y-8">
               {/* Intro */}
               <p className="text-sm font-light text-(--color-foreground-muted) leading-relaxed">
-                Connect your Spotify account to unlock advanced features and seamless integration with TimeGroove.
+                Connect your Spotify account to unlock advanced features and seamless integration with Time Groove.
               </p>
 
               {/* Service Cards */}

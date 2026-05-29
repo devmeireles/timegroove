@@ -27,7 +27,7 @@ Time Groove connects these pieces into one flow:
 - Country + year based exploration with infinite scrolling queue.
 - Reconciliation pipeline (Discogs -> Spotify -> YouTube).
 - Now Playing strip with detail modal, favorites, and playlist actions.
-- Auth0 login with app user sync to database.
+- Spotify OAuth login with app user sync to database.
 - Persistent favorites and playlists per user.
 - Queue-aware player behavior (including auto-play next on track end).
 
@@ -137,6 +137,8 @@ npm run db:migrate
 - `/api/discogs/video`: YouTube video resolution.
 - `/api/favorites`: list/add/remove favorites.
 - `/api/playlists`: list/create/include/exclude playlist items.
+- `/api/playlists/[id]`: rename/delete playlist (Spotify first, then app DB).
+- `/api/playlists/[id]/sync-to-spotify`: one-way sync from local playlist to Spotify.
 
 ## Why the Experience Feels Fast
 

@@ -1,7 +1,10 @@
 "use client";
 
 import { redirectToLogin } from "@/lib/client/navigation";
-import type { DiscogsReleaseType } from "@/lib/discogs/releaseIdentity";
+import {
+  getReleaseDiscogsType,
+  type DiscogsReleaseType,
+} from "@/lib/discogs/releaseIdentity";
 import type { NormalizedRelease } from "@/types/discogs";
 
 export type DiscogsType = DiscogsReleaseType;
@@ -21,6 +24,18 @@ export interface FavoriteItem {
 export interface PlaylistItem {
   id: number;
   name: string;
+  spotifyPlaylistId: string | null;
+  spotifySyncStatus:
+    | "not-synced"
+    | "synced"
+    | "partially-synced"
+    | "sync-error"
+    | null;
+  spotifySyncedAt: string | null;
+  spotifySyncError: string | null;
+  syncedTrackCount?: number;
+  mappedItemsCount?: number;
+  totalItemsCount?: number;
   updatedAt: string;
 }
 
@@ -33,7 +48,20 @@ async function ensureApiOk(response: Response, fallbackError: string) {
     return null; // Return null to indicate not authenticated (optional feature)
   }
   if (!response.ok) {
-    throw new Error(fallbackError);
+    let message = fallbackError;
+    try {
+      const contentType = response.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        const payload = (await response.json()) as { error?: string };
+        if (payload.error) message = payload.error;
+      } else {
+        const text = await response.text();
+        if (text) message = text;
+      }
+    } catch {
+      // Keep fallback message.
+    }
+    throw new Error(message);
   }
   return response;
 }
@@ -109,12 +137,97 @@ export async function updatePlaylistMembership(input: {
   action: "include" | "exclude";
   release: NormalizedRelease;
 }): Promise<void> {
+  const body =
+    input.action === "include"
+      ? {
+          playlistId: input.playlistId,
+          action: input.action,
+          release: input.release,
+        }
+      : {
+          playlistId: input.playlistId,
+          action: input.action,
+          discogsId: input.release.id,
+          discogsType: getReleaseDiscogsType(input.release),
+        };
+
   const response = await fetch("/api/playlists", {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
+    body: JSON.stringify(body),
   });
   const checked = await ensureApiOk(response, "Failed to update playlist");
+  if (!checked) {
+    redirectToLogin();
+    throw new Error("Authentication required");
+  }
+}
+
+export interface SyncPlaylistSummary {
+  playlistId: number;
+  spotifyPlaylistId: string | null;
+  status: "not-synced" | "synced" | "partially-synced";
+  totalItems: number;
+  mappedItems: number;
+  skippedItems: number;
+  candidateTrackCount: number;
+  addedTrackCount: number;
+  skippedTrackCount: number;
+}
+
+export async function syncPlaylistToSpotify(
+  playlistId: number,
+): Promise<SyncPlaylistSummary> {
+  const response = await fetch(`/api/playlists/${playlistId}/sync-to-spotify`, {
+    method: "POST",
+  });
+  const checked = await ensureApiOk(response, "Failed to sync playlist");
+  if (!checked) {
+    redirectToLogin();
+    throw new Error("Authentication required");
+  }
+
+  const data = (await checked.json()) as {
+    summary?: SyncPlaylistSummary;
+    error?: string;
+  };
+  if (!data.summary) {
+    throw new Error(data.error || "Failed to sync playlist");
+  }
+
+  return data.summary;
+}
+
+export async function renamePlaylist(
+  playlistId: number,
+  name: string,
+): Promise<PlaylistItem> {
+  const response = await fetch(`/api/playlists/${playlistId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  });
+  const checked = await ensureApiOk(response, "Failed to rename playlist");
+  if (!checked) {
+    redirectToLogin();
+    throw new Error("Authentication required");
+  }
+
+  const data = (await checked.json()) as {
+    playlist?: PlaylistItem;
+    error?: string;
+  };
+  if (!data.playlist) {
+    throw new Error(data.error || "Failed to rename playlist");
+  }
+  return data.playlist;
+}
+
+export async function deletePlaylist(playlistId: number): Promise<void> {
+  const response = await fetch(`/api/playlists/${playlistId}`, {
+    method: "DELETE",
+  });
+  const checked = await ensureApiOk(response, "Failed to delete playlist");
   if (!checked) {
     redirectToLogin();
     throw new Error("Authentication required");

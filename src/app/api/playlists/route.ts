@@ -32,6 +32,7 @@ interface CreatePlaylistBody {
 
 interface PlaylistActionBody {
   playlistId?: unknown;
+  action?: unknown;
   release?: unknown;
   discogsId?: unknown;
   discogsType?: unknown;
@@ -111,8 +112,16 @@ export async function PATCH(request: NextRequest) {
     );
   }
 
-  // Include release in playlist
-  if (isNormalizedRelease(body.release)) {
+  const action = body.action === "exclude" ? "exclude" : "include";
+
+  if (action === "include") {
+    if (!isNormalizedRelease(body.release)) {
+      return Response.json(
+        { error: "Body must include a valid `release` object for include action" },
+        { status: 400 },
+      );
+    }
+
     const success = await includeReleaseInPlaylist(
       userId,
       playlistId,
@@ -128,9 +137,16 @@ export async function PATCH(request: NextRequest) {
   }
 
   // Exclude release from playlist
-  const discogsId = Number(body.discogsId);
+  const fallbackDiscogsId = Number(body.discogsId);
+  const discogsId = isNormalizedRelease(body.release)
+    ? body.release.id
+    : fallbackDiscogsId;
   const discogsType: "release" | "master" =
-    body.discogsType === "master" ? "master" : "release";
+    isNormalizedRelease(body.release) && body.release.type === "master"
+      ? "master"
+      : body.discogsType === "master"
+        ? "master"
+        : "release";
 
   if (!Number.isFinite(discogsId) || discogsId <= 0) {
     return Response.json(
