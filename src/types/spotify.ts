@@ -69,5 +69,6 @@ export interface SpotifySearchResponse {
 export interface SpotifyTokenResponse {
   access_token: string;
   token_type: "Bearer";
-  expires_in: number;                     // seconds
+  expires_in: number; // seconds
+  refresh_token?: string; // Only present in Authorization Code flow
 }

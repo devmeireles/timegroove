@@ -1,50 +1,46 @@
 "use client";
 
-import { ChevronDown, CircleUserRound } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
-
-interface AuthUser {
-  email?: string;
-  name?: string;
-}
+import { ChevronDown, LogOut, Music } from "lucide-react";
+import Image from "next/image";
+import { useEffect, useRef, useState } from "react";
 
 interface AvatarMenuProps {
-  onRequestFavorites: () => void;
-  onRequestPlaylists: () => void;
   onRequestAbout?: () => void;
+  onRequestSpotifySettings?: () => void;
+}
+
+interface UserProfile {
+  spotifyUserId: string | null;
+  displayName: string | null;
+  avatarUrl: string | null;
 }
 
 export function AvatarMenu({
-  onRequestFavorites,
-  onRequestPlaylists,
   onRequestAbout,
+  onRequestSpotifySettings,
 }: AvatarMenuProps) {
   const [open, setOpen] = useState(false);
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const controller = new AbortController();
-
-    async function loadProfile() {
+    const fetchProfile = async () => {
       try {
-        const response = await fetch("/auth/profile", {
-          signal: controller.signal,
+        const response = await fetch("/api/auth/profile", {
           cache: "no-store",
         });
-        if (!response.ok) {
-          setUser(null);
-          return;
+        if (response.ok) {
+          setProfile(await response.json());
         }
-        const profile = (await response.json()) as AuthUser;
-        setUser(profile);
-      } catch {
-        setUser(null);
+      } catch (error) {
+        console.error("Failed to fetch profile:", error);
+      } finally {
+        setIsLoading(false);
       }
-    }
+    };
 
-    void loadProfile();
-    return () => controller.abort();
+    void fetchProfile();
   }, []);
 
   useEffect(() => {
@@ -59,22 +55,42 @@ export function AvatarMenu({
     return () => window.removeEventListener("pointerdown", onPointerDown);
   }, [open]);
 
-  const label = useMemo(() => {
-    if (!user) return "Guest";
-    return user.email ?? user.name ?? "User";
-  }, [user]);
+  const handleDisconnect = async () => {
+    try {
+      await fetch("/api/auth/spotify/disconnect", { method: "POST" });
+      setProfile(null);
+      setOpen(false);
+      // Refresh page to update UI
+      window.location.reload();
+    } catch (error) {
+      console.error("Failed to disconnect:", error);
+    }
+  };
 
   return (
     <div ref={containerRef} className="relative">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex h-9 items-center gap-1.5 px-1 text-(--color-foreground-muted) transition-colors hover:text-(--color-foreground)"
+        className="flex h-9 items-center gap-1.5 px-2 text-(--color-foreground-muted) transition-colors hover:text-(--color-foreground)"
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label="Open user menu"
+        aria-label="Open menu"
       >
-        <CircleUserRound size={19} aria-hidden="true" />
+        {isLoading ? (
+          <Music size={18} aria-hidden="true" />
+        ) : profile?.avatarUrl ? (
+          <Image
+            src={profile.avatarUrl}
+            alt={profile.displayName || "User"}
+            width={20}
+            height={20}
+            unoptimized
+            className="w-5 h-5 rounded-full"
+          />
+        ) : (
+          <Music size={18} aria-hidden="true" />
+        )}
         <ChevronDown size={12} aria-hidden="true" />
       </button>
 
@@ -83,72 +99,63 @@ export function AvatarMenu({
           role="menu"
           className="absolute top-full right-0 z-30 mt-2 min-w-48 rounded-sm border border-(--color-border) bg-(--color-surface-elevated) p-1 shadow-2xl"
         >
-          <p className="truncate px-2 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-(--color-foreground-subtle)">
-            {label}
-          </p>
-          <div className="my-1 h-px bg-(--color-border)" />
-
-          {!user ? (
+          {profile?.spotifyUserId ? (
             <>
-              <a
-                role="menuitem"
-                href="/auth/login"
-                className="block rounded-sm px-2 py-1.5 font-mono text-[11px] uppercase tracking-[0.12em] text-(--color-foreground-muted) transition-colors hover:bg-(--color-surface) hover:text-(--color-accent)"
-              >
-                Login
-              </a>
-              <a
-                role="menuitem"
-                href="/auth/login?screen_hint=signup"
-                className="block rounded-sm px-2 py-1.5 font-mono text-[11px] uppercase tracking-[0.12em] text-(--color-foreground-muted) transition-colors hover:bg-(--color-surface) hover:text-(--color-accent)"
-              >
-                Signup
-              </a>
+              <div className="px-2 py-2">
+                <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-(--color-foreground-subtle) mb-1">
+                  Connected
+                </p>
+                <p className="text-sm font-light text-(--color-foreground)">
+                  {profile.displayName || "Spotify User"}
+                </p>
+              </div>
+              <div className="my-1 h-px bg-(--color-border)" />
             </>
           ) : (
             <>
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setOpen(false);
-                  onRequestFavorites();
-                }}
-                className="block w-full rounded-sm px-2 py-1.5 text-left font-mono text-[11px] uppercase tracking-[0.12em] text-(--color-foreground-muted) transition-colors hover:bg-(--color-surface) hover:text-(--color-accent)"
-              >
-                Favorites
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setOpen(false);
-                  onRequestPlaylists();
-                }}
-                className="block w-full rounded-sm px-2 py-1.5 text-left font-mono text-[11px] uppercase tracking-[0.12em] text-(--color-foreground-muted) transition-colors hover:bg-(--color-surface) hover:text-(--color-accent)"
-              >
-                Playlists
-              </button>
-              
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setOpen(false);
-                  onRequestAbout?.();
-                }}
-                className="block w-full rounded-sm px-2 py-1.5 text-left font-mono text-[11px] uppercase tracking-[0.12em] text-(--color-foreground-muted) transition-colors hover:bg-(--color-surface) hover:text-(--color-accent)"
-              >
-                About
-              </button>
+              <p className="px-2 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-(--color-foreground-subtle)">
+                TimeGroove
+              </p>
               <div className="my-1 h-px bg-(--color-border)" />
-              <a
+            </>
+          )}
+
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              onRequestSpotifySettings?.();
+            }}
+            className="block w-full rounded-sm px-2 py-1.5 text-left font-mono text-[11px] uppercase tracking-[0.12em] text-(--color-foreground-muted) transition-colors hover:bg-(--color-surface) hover:text-(--color-accent)"
+          >
+            Spotify
+          </button>
+
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              onRequestAbout?.();
+            }}
+            className="block w-full rounded-sm px-2 py-1.5 text-left font-mono text-[11px] uppercase tracking-[0.12em] text-(--color-foreground-muted) transition-colors hover:bg-(--color-surface) hover:text-(--color-accent)"
+          >
+            About
+          </button>
+
+          {profile?.spotifyUserId && (
+            <>
+              <div className="my-1 h-px bg-(--color-border)" />
+              <button
+                type="button"
                 role="menuitem"
-                href="/auth/logout"
-                className="block rounded-sm px-2 py-1.5 font-mono text-[11px] uppercase tracking-[0.12em] text-(--color-foreground-muted) transition-colors hover:bg-(--color-surface) hover:text-(--color-accent)"
+                onClick={handleDisconnect}
+                className="flex items-center gap-2 w-full rounded-sm px-2 py-1.5 text-left font-mono text-[11px] uppercase tracking-[0.12em] text-(--color-foreground-muted) transition-colors hover:bg-(--color-surface) hover:text-red-400"
               >
-                Logout
-              </a>
+                <LogOut size={12} />
+                Disconnect
+              </button>
             </>
           )}
         </div>

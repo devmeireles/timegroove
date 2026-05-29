@@ -1,12 +1,12 @@
 import type { NextRequest } from "next/server";
+import { cookies } from "next/headers";
 
-import { auth0 } from "@/lib/auth0";
 import {
   addFavorite,
   listFavoritesForUser,
   removeFavorite,
 } from "@/repositories/favorites";
-import { findUserByAuth0Sub } from "@/repositories/users";
+import { findUserBySpotifyId } from "@/repositories/users";
 import type { NormalizedRelease } from "@/types/discogs";
 
 interface FavoriteBody {
@@ -20,13 +20,11 @@ function isNormalizedRelease(value: unknown): value is NormalizedRelease {
 }
 
 async function resolveCurrentUserId(): Promise<number | null> {
-  const session = await auth0.getSession();
-  const sub =
-    session?.user && typeof session.user.sub === "string"
-      ? session.user.sub
-      : null;
-  if (!sub) return null;
-  const user = await findUserByAuth0Sub(sub);
+  const cookieStore = await cookies();
+  const spotifyUserId = cookieStore.get("spotify_user_id")?.value;
+  if (!spotifyUserId) return null;
+
+  const user = await findUserBySpotifyId(spotifyUserId);
   return user?.id ?? null;
 }
 

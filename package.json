@@ -7,6 +7,7 @@
     "build": "node scripts/migrate.mjs && next build",
     "start": "node scripts/migrate.mjs && next start",
     "lint": "eslint",
+    "env:spotify": "bash update_env.sh",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node scripts/migrate.mjs"
   },

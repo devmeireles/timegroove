@@ -30,18 +30,19 @@ export interface PlaylistMenuItem extends PlaylistItem {
 
 async function ensureApiOk(response: Response, fallbackError: string) {
   if (response.status === 401) {
-    redirectToLogin();
-    throw new Error("Authentication required");
+    return null; // Return null to indicate not authenticated (optional feature)
   }
   if (!response.ok) {
     throw new Error(fallbackError);
   }
+  return response;
 }
 
 export async function fetchFavorites(): Promise<FavoriteItem[]> {
   const response = await fetch("/api/favorites", { cache: "no-store" });
-  await ensureApiOk(response, "Failed to load favorites");
-  const data = (await response.json()) as { favorites?: FavoriteItem[] };
+  const checked = await ensureApiOk(response, "Failed to load favorites");
+  if (!checked) return []; // Return empty list if not authenticated
+  const data = (await checked.json()) as { favorites?: FavoriteItem[] };
   return data.favorites ?? [];
 }
 
@@ -51,7 +52,11 @@ export async function addFavorite(release: NormalizedRelease): Promise<void> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ release }),
   });
-  await ensureApiOk(response, "Failed to update favorite");
+  const checked = await ensureApiOk(response, "Failed to update favorite");
+  if (!checked) {
+    redirectToLogin(); // Require auth for write operations
+    throw new Error("Authentication required");
+  }
 }
 
 export async function removeFavorite(
@@ -62,7 +67,11 @@ export async function removeFavorite(
     `/api/favorites?discogsId=${discogsId}&discogsType=${discogsType}`,
     { method: "DELETE" },
   );
-  await ensureApiOk(response, "Failed to update favorite");
+  const checked = await ensureApiOk(response, "Failed to update favorite");
+  if (!checked) {
+    redirectToLogin();
+    throw new Error("Authentication required");
+  }
 }
 
 export async function fetchPlaylists(
@@ -73,8 +82,9 @@ export async function fetchPlaylists(
       ? ""
       : `?discogsId=${release.discogsId}&discogsType=${release.discogsType}`;
   const response = await fetch(`/api/playlists${params}`, { cache: "no-store" });
-  await ensureApiOk(response, "Failed to load playlists");
-  const data = (await response.json()) as { playlists?: PlaylistMenuItem[] };
+  const checked = await ensureApiOk(response, "Failed to load playlists");
+  if (!checked) return []; // Return empty list if not authenticated
+  const data = (await checked.json()) as { playlists?: PlaylistMenuItem[] };
   return data.playlists ?? [];
 }
 
@@ -84,8 +94,12 @@ export async function createPlaylist(name: string): Promise<PlaylistItem> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name }),
   });
-  await ensureApiOk(response, "Could not create playlist");
-  const data = (await response.json()) as { playlist?: PlaylistItem };
+  const checked = await ensureApiOk(response, "Could not create playlist");
+  if (!checked) {
+    redirectToLogin();
+    throw new Error("Authentication required");
+  }
+  const data = (await checked.json()) as { playlist?: PlaylistItem };
   if (!data.playlist) throw new Error("Could not create playlist");
   return data.playlist;
 }
@@ -100,5 +114,9 @@ export async function updatePlaylistMembership(input: {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
   });
-  await ensureApiOk(response, "Failed to update playlist");
+  const checked = await ensureApiOk(response, "Failed to update playlist");
+  if (!checked) {
+    redirectToLogin();
+    throw new Error("Authentication required");
+  }
 }

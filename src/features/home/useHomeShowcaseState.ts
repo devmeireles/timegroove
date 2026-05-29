@@ -46,15 +46,18 @@ export interface HomeShowcaseState {
   handleReset: () => void;
   handleSelectCountry: (country: string) => void;
   loadMore: () => void;
-  favoritesOpen: boolean;
-  playlistsOpen: boolean;
-  openFavorites: () => void;
-  closeFavorites: () => void;
-  openPlaylists: () => void;
-  closePlaylists: () => void;
   aboutOpen: boolean;
   openAbout: () => void;
   closeAbout: () => void;
+  spotifySettingsOpen: boolean;
+  openSpotifySettings: () => void;
+  closeSpotifySettings: () => void;
+  favoritesOpen: boolean;
+  openFavorites: () => void;
+  closeFavorites: () => void;
+  playlistsOpen: boolean;
+  openPlaylists: () => void;
+  closePlaylists: () => void;
 }
 
 export function useHomeShowcaseState(): HomeShowcaseState {
@@ -63,9 +66,10 @@ export function useHomeShowcaseState(): HomeShowcaseState {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
+  const [spotifySettingsOpen, setSpotifySettingsOpen] = useState(false);
   const [favoritesOpen, setFavoritesOpen] = useState(false);
   const [playlistsOpen, setPlaylistsOpen] = useState(false);
-  const [aboutOpen, setAboutOpen] = useState(false);
 
   const inflight = useRef<AbortController | null>(null);
 
@@ -193,14 +197,17 @@ export function useHomeShowcaseState(): HomeShowcaseState {
     handleReset,
     handleSelectCountry,
     loadMore,
-    favoritesOpen,
-    playlistsOpen,
-    openFavorites: () => setFavoritesOpen(true),
-    closeFavorites: () => setFavoritesOpen(false),
-    openPlaylists: () => setPlaylistsOpen(true),
-    closePlaylists: () => setPlaylistsOpen(false),
     aboutOpen,
     openAbout: () => setAboutOpen(true),
     closeAbout: () => setAboutOpen(false),
+    spotifySettingsOpen,
+    openSpotifySettings: () => setSpotifySettingsOpen(true),
+    closeSpotifySettings: () => setSpotifySettingsOpen(false),
+    favoritesOpen,
+    openFavorites: () => setFavoritesOpen(true),
+    closeFavorites: () => setFavoritesOpen(false),
+    playlistsOpen,
+    openPlaylists: () => setPlaylistsOpen(true),
+    closePlaylists: () => setPlaylistsOpen(false),
   };
 }

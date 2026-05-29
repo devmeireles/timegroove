@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
-import { auth0 } from "@/lib/auth0";
-import { syncAuth0UserToDatabase } from "@/services/auth/userSync";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -26,15 +24,6 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const session = await auth0.getSession();
-  if (session?.user) {
-    try {
-      await syncAuth0UserToDatabase(session.user);
-    } catch (error) {
-      console.error("Failed to sync authenticated user", error);
-    }
-  }
-
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body className="h-screen w-screen overflow-hidden antialiased">

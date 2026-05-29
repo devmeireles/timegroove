@@ -47,7 +47,7 @@ Time Groove connects these pieces into one flow:
 
 ### Authentication
 
-- Auth0 via `@auth0/nextjs-auth0`.
+- Spotify OAuth for user login and playlist sync.
 - Session-aware server rendering and user synchronization into `app_users`.
 
 ### Reliability Choices
@@ -89,13 +89,20 @@ Create `.env.local` from your `.env` template and set values for:
 - `DISCOGS_USER_AGENT`
 - `SPOTIFY_CLIENT_ID`
 - `SPOTIFY_CLIENT_SECRET`
+- `SPOTIFY_REDIRECT_URI`
+- `ENCRYPTION_KEY`
 - `TURSO_DATABASE_URL`
 - `TURSO_AUTH_TOKEN`
-- `APP_BASE_URL`
-- `AUTH0_DOMAIN`
-- `AUTH0_CLIENT_ID`
-- `AUTH0_CLIENT_SECRET`
-- `AUTH0_SECRET`
+
+If you use ngrok for local Spotify callback testing, update `SPOTIFY_REDIRECT_URI` with:
+
+```bash
+npm run env:spotify -- https://your-ngrok-subdomain.ngrok-free.app
+```
+
+This also rewrites `allowedDevOrigins` in `next.config.ts` to the ngrok host so local dev requests keep working.
+
+Then copy that exact callback URL into your Spotify app dashboard.
 
 ### 3. Run the app
 

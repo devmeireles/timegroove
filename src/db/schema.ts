@@ -72,10 +72,14 @@ export const appUsers = sqliteTable(
   "app_users",
   {
     id: integer("id").primaryKey({ autoIncrement: true }),
-    auth0Sub: text("auth0_sub").notNull(),
+    auth0Sub: text("auth0_sub"),
     email: text("email"),
     displayName: text("display_name"),
     avatarUrl: text("avatar_url"),
+    spotifyUserId: text("spotify_user_id"),
+    spotifyAccessToken: text("spotify_access_token"),
+    spotifyRefreshToken: text("spotify_refresh_token"),
+    spotifyTokenExpiresAt: text("spotify_token_expires_at"),
     createdAt: text("created_at").notNull(),
     updatedAt: text("updated_at").notNull(),
     lastSeenAt: text("last_seen_at").notNull(),
@@ -84,6 +88,7 @@ export const appUsers = sqliteTable(
     auth0Unique: uniqueIndex("app_users_auth0_sub_unique").on(table.auth0Sub),
     emailIdx: index("idx_app_users_email").on(table.email),
     lastSeenIdx: index("idx_app_users_last_seen").on(table.lastSeenAt),
+    spotifyUserIdx: index("idx_app_users_spotify").on(table.spotifyUserId),
   }),
 );
 
@@ -121,6 +126,12 @@ export const appPlaylists = sqliteTable(
       .notNull()
       .references(() => appUsers.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
+    spotifyPlaylistId: text("spotify_playlist_id"),
+    spotifySyncStatus: text("spotify_sync_status", {
+      enum: ["not-synced", "synced", "partially-synced", "sync-error"],
+    }).default("not-synced"),
+    spotifySyncedAt: text("spotify_synced_at"),
+    spotifySyncError: text("spotify_sync_error"),
     createdAt: text("created_at").notNull(),
     updatedAt: text("updated_at").notNull(),
   },
@@ -131,6 +142,9 @@ export const appPlaylists = sqliteTable(
     ),
     userIdx: index("idx_playlists_user").on(table.userId),
     updatedAtIdx: index("idx_playlists_updated").on(table.updatedAt),
+    spotifySyncIdx: index("idx_playlists_spotify_sync").on(
+      table.spotifySyncStatus,
+    ),
   }),
 );
 

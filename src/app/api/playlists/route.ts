@@ -1,24 +1,40 @@
 import type { NextRequest } from "next/server";
+import { cookies } from "next/headers";
 
-import { auth0 } from "@/lib/auth0";
 import {
-  createPlaylistForUser,
-  ensureDefaultPlaylist,
-  excludeReleaseFromPlaylist,
-  includeReleaseInPlaylist,
   listPlaylistsForUser,
+  createPlaylistForUser,
+  includeReleaseInPlaylist,
+  excludeReleaseFromPlaylist,
 } from "@/repositories/playlists";
-import { findUserByAuth0Sub } from "@/repositories/users";
+import { findUserBySpotifyId } from "@/repositories/users";
 import type { NormalizedRelease } from "@/types/discogs";
+
+async function resolveCurrentUserId(): Promise<number | null> {
+  const cookieStore = await cookies();
+  const spotifyUserId = cookieStore.get("spotify_user_id")?.value;
+  if (!spotifyUserId) return null;
+
+  const user = await findUserBySpotifyId(spotifyUserId);
+  return user?.id ?? null;
+}
+
+interface PlaylistsQueryParams {
+  release?: {
+    discogsId: number;
+    discogsType: "release" | "master";
+  };
+}
 
 interface CreatePlaylistBody {
   name?: unknown;
 }
 
-interface UpdatePlaylistBody {
+interface PlaylistActionBody {
   playlistId?: unknown;
-  action?: unknown;
   release?: unknown;
+  discogsId?: unknown;
+  discogsType?: unknown;
 }
 
 function isNormalizedRelease(value: unknown): value is NormalizedRelease {
@@ -27,51 +43,26 @@ function isNormalizedRelease(value: unknown): value is NormalizedRelease {
   return typeof v.id === "number" && typeof v.type === "string";
 }
 
-function parseDiscogsType(value: string | null): "release" | "master" {
-  return value === "master" ? "master" : "release";
-}
-
-async function resolveCurrentUserId(): Promise<number | null> {
-  const session = await auth0.getSession();
-  const sub =
-    session?.user && typeof session.user.sub === "string"
-      ? session.user.sub
-      : null;
-  if (!sub) return null;
-  const user = await findUserByAuth0Sub(sub);
-  return user?.id ?? null;
-}
-
 export async function GET(request: NextRequest) {
   const userId = await resolveCurrentUserId();
   if (!userId) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  await ensureDefaultPlaylist(userId);
+  const searchParams = request.nextUrl.searchParams;
+  const discogsId = searchParams.get("discogsId");
+  const discogsType = searchParams.get("discogsType");
 
-  const discogsIdRaw = request.nextUrl.searchParams.get("discogsId");
-  const discogsTypeRaw = request.nextUrl.searchParams.get("discogsType");
-
-  const releaseFilter =
-    discogsIdRaw == null
-      ? undefined
-      : {
-          discogsId: Number(discogsIdRaw),
-          discogsType: parseDiscogsType(discogsTypeRaw),
-        };
-
-  if (
-    releaseFilter &&
-    (!Number.isFinite(releaseFilter.discogsId) || releaseFilter.discogsId <= 0)
-  ) {
-    return Response.json(
-      { error: "discogsId query param must be a positive number" },
-      { status: 400 },
-    );
+  let params: PlaylistsQueryParams | undefined;
+  if (discogsId && discogsType) {
+    const id = Number(discogsId);
+    const type = discogsType === "master" ? "master" : "release";
+    if (Number.isFinite(id) && id > 0) {
+      params = { release: { discogsId: id, discogsType: type } };
+    }
   }
 
-  const playlists = await listPlaylistsForUser(userId, releaseFilter);
+  const playlists = await listPlaylistsForUser(userId, params?.release);
   return Response.json({ playlists });
 }
 
@@ -88,29 +79,15 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const name = typeof body.name === "string" ? body.name.trim() : "";
-  if (!name) {
+  if (typeof body.name !== "string" || !body.name.trim()) {
     return Response.json(
-      { error: "Body must include a non-empty `name`" },
-      { status: 400 },
-    );
-  }
-  if (name.length > 80) {
-    return Response.json(
-      { error: "Playlist name must be at most 80 characters" },
+      { error: "Body must include a non-empty `name` string" },
       { status: 400 },
     );
   }
 
-  try {
-    const playlist = await createPlaylistForUser(userId, name);
-    return Response.json({ playlist });
-  } catch {
-    return Response.json(
-      { error: "Playlist already exists or could not be created" },
-      { status: 409 },
-    );
-  }
+  const playlist = await createPlaylistForUser(userId, body.name);
+  return Response.json({ playlist });
 }
 
 export async function PATCH(request: NextRequest) {
@@ -119,54 +96,60 @@ export async function PATCH(request: NextRequest) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let body: UpdatePlaylistBody;
+  let body: PlaylistActionBody;
   try {
-    body = (await request.json()) as UpdatePlaylistBody;
+    body = (await request.json()) as PlaylistActionBody;
   } catch {
     return Response.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
   const playlistId = Number(body.playlistId);
-  const action = body.action;
   if (!Number.isFinite(playlistId) || playlistId <= 0) {
     return Response.json(
-      { error: "Body must include a positive numeric `playlistId`" },
-      { status: 400 },
-    );
-  }
-  if (action !== "include" && action !== "exclude") {
-    return Response.json(
-      { error: "Body action must be `include` or `exclude`" },
+      { error: "Body must include a valid `playlistId` number" },
       { status: 400 },
     );
   }
 
-  if (!isNormalizedRelease(body.release)) {
-    return Response.json(
-      { error: "Body must include a `release` matching NormalizedRelease" },
-      { status: 400 },
+  // Include release in playlist
+  if (isNormalizedRelease(body.release)) {
+    const success = await includeReleaseInPlaylist(
+      userId,
+      playlistId,
+      body.release,
     );
+    if (!success) {
+      return Response.json(
+        { error: "Failed to include release in playlist" },
+        { status: 400 },
+      );
+    }
+    return Response.json({ ok: true });
   }
 
+  // Exclude release from playlist
+  const discogsId = Number(body.discogsId);
   const discogsType: "release" | "master" =
-    body.release.type === "master" ? "master" : "release";
+    body.discogsType === "master" ? "master" : "release";
 
-  const ok =
-    action === "include"
-      ? await includeReleaseInPlaylist(userId, Math.floor(playlistId), body.release)
-      : await excludeReleaseFromPlaylist(
-          userId,
-          Math.floor(playlistId),
-          body.release.id,
-          discogsType,
-        );
-
-  if (!ok) {
+  if (!Number.isFinite(discogsId) || discogsId <= 0) {
     return Response.json(
-      { error: "Playlist not found" },
-      { status: 404 },
+      { error: "Body must include a valid `discogsId` number" },
+      { status: 400 },
     );
   }
 
+  const success = await excludeReleaseFromPlaylist(
+    userId,
+    playlistId,
+    discogsId,
+    discogsType,
+  );
+  if (!success) {
+    return Response.json(
+      { error: "Failed to exclude release from playlist" },
+      { status: 400 },
+    );
+  }
   return Response.json({ ok: true });
 }

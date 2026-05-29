@@ -15,9 +15,8 @@ interface FilterPanelProps {
   onChange: (next: DiscogsSearchFilters) => void;
   onSubmit: () => void;
   onReset: () => void;
-  onRequestFavorites: () => void;
-  onRequestPlaylists: () => void;
   onRequestAbout?: () => void;
+  onRequestSpotifySettings?: () => void;
   isLoading: boolean;
 }
 
@@ -26,9 +25,8 @@ export function FilterPanel({
   onChange,
   onSubmit,
   onReset,
-  onRequestFavorites,
-  onRequestPlaylists,
   onRequestAbout,
+  onRequestSpotifySettings,
   isLoading,
 }: FilterPanelProps) {
   const yearId = useId();
@@ -111,9 +109,8 @@ export function FilterPanel({
 
       <div className="flex justify-end pb-px">
         <AvatarMenu
-          onRequestFavorites={onRequestFavorites}
-          onRequestPlaylists={onRequestPlaylists}
           onRequestAbout={onRequestAbout}
+          onRequestSpotifySettings={onRequestSpotifySettings}
         />
       </div>
     </form>

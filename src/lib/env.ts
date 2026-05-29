@@ -37,12 +37,22 @@ export const serverEnv = {
       "SPOTIFY_AUTH_URL",
       "https://accounts.spotify.com/api/token",
     ),
+    oauthAuthUrl: readOptional(
+      "SPOTIFY_OAUTH_AUTH_URL",
+      "https://accounts.spotify.com/authorize",
+    ),
     get clientId() {
       return readRequired("SPOTIFY_CLIENT_ID");
     },
     get clientSecret() {
       return readRequired("SPOTIFY_CLIENT_SECRET");
     },
+    get redirectUri() {
+      return readRequired("SPOTIFY_REDIRECT_URI");
+    },
+  },
+  get encryptionKey() {
+    return readRequired("ENCRYPTION_KEY");
   },
   turso: {
     get url() {

@@ -41,5 +41,6 @@ yarn-error.log*
 next-env.d.ts
 
 # libSQL embedded files (only present in local-file mode; Turso hosted has no files)
-/time-groove.db
-/time-groove.db-*
+/*.db
+
+certificates
