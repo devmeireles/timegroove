@@ -18,14 +18,14 @@ const INITIAL_FILTERS: DiscogsSearchFilters = {
   page: 1,
 };
 
-interface QueueState {
+interface ResultsState {
   results: NormalizedRelease[];
   pagination: DiscogsPagination | null;
   query: DiscogsSearchFilters | null;
   pagesLoaded: number;
 }
 
-const EMPTY_QUEUE: QueueState = {
+const EMPTY_RESULTS: ResultsState = {
   results: [],
   pagination: null,
   query: null,
@@ -59,7 +59,7 @@ export interface HomeShowcaseState {
 
 export function useHomeShowcaseState(): HomeShowcaseState {
   const [filters, setFilters] = useState<DiscogsSearchFilters>(INITIAL_FILTERS);
-  const [queue, setQueue] = useState<QueueState>(EMPTY_QUEUE);
+  const [resultsState, setResultsState] = useState<ResultsState>(EMPTY_RESULTS);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -85,7 +85,7 @@ export function useHomeShowcaseState(): HomeShowcaseState {
     try {
       const response = await searchReleases(next, controller.signal);
       if (controller.signal.aborted) return;
-      setQueue({
+      setResultsState({
         results: response.results,
         pagination: response.pagination,
         query: next,
@@ -100,7 +100,7 @@ export function useHomeShowcaseState(): HomeShowcaseState {
             ? err.message
             : "Unknown error";
       setError(message);
-      setQueue(EMPTY_QUEUE);
+      setResultsState(EMPTY_RESULTS);
     } finally {
       if (inflight.current === controller) {
         setIsLoading(false);
@@ -110,21 +110,21 @@ export function useHomeShowcaseState(): HomeShowcaseState {
 
   const loadMore = useCallback(async () => {
     if (isLoadingMore || isLoading) return;
-    if (!queue.pagination || !queue.query) return;
-    if (queue.pagesLoaded >= queue.pagination.pages) return;
+    if (!resultsState.pagination || !resultsState.query) return;
+    if (resultsState.pagesLoaded >= resultsState.pagination.pages) return;
 
-    const nextPage = queue.pagesLoaded + 1;
+    const nextPage = resultsState.pagesLoaded + 1;
     const nextFilters: DiscogsSearchFilters = {
-      ...queue.query,
+      ...resultsState.query,
       page: nextPage,
-      per_page: queue.pagination.per_page,
+      per_page: resultsState.pagination.per_page,
     };
 
     setIsLoadingMore(true);
     try {
       const response = await searchReleases(nextFilters);
-      setQueue((prev) => {
-        if (prev.query !== queue.query) return prev;
+      setResultsState((prev) => {
+        if (prev.query !== resultsState.query) return prev;
         return {
           ...prev,
           results: [...prev.results, ...response.results],
@@ -143,7 +143,7 @@ export function useHomeShowcaseState(): HomeShowcaseState {
     } finally {
       setIsLoadingMore(false);
     }
-  }, [isLoadingMore, isLoading, queue]);
+  }, [isLoadingMore, isLoading, resultsState]);
 
   const handleSubmit = useCallback(() => {
     if (!filters.country) return;
@@ -153,7 +153,7 @@ export function useHomeShowcaseState(): HomeShowcaseState {
   const handleReset = useCallback(() => {
     inflight.current?.abort();
     setFilters(INITIAL_FILTERS);
-    setQueue(EMPTY_QUEUE);
+    setResultsState(EMPTY_RESULTS);
     setError(null);
   }, []);
 
@@ -167,16 +167,16 @@ export function useHomeShowcaseState(): HomeShowcaseState {
   );
 
   const data: NormalizedSearchResponse | null = useMemo(() => {
-    if (!queue.pagination || !queue.query) return null;
+    if (!resultsState.pagination || !resultsState.query) return null;
     return {
-      results: queue.results,
-      pagination: queue.pagination,
-      query: queue.query,
+      results: resultsState.results,
+      pagination: resultsState.pagination,
+      query: resultsState.query,
     };
-  }, [queue]);
+  }, [resultsState]);
 
-  const hasMore = queue.pagination
-    ? queue.pagesLoaded < queue.pagination.pages
+  const hasMore = resultsState.pagination
+    ? resultsState.pagesLoaded < resultsState.pagination.pages
     : false;
 
   return {
@@ -184,8 +184,8 @@ export function useHomeShowcaseState(): HomeShowcaseState {
     setFilters,
     data,
     error,
-    lastQuery: queue.query,
-    pagesLoaded: queue.pagesLoaded,
+    lastQuery: resultsState.query,
+    pagesLoaded: resultsState.pagesLoaded,
     hasMore,
     isLoading,
     isLoadingMore,

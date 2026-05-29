@@ -24,6 +24,8 @@ interface WorldMapProps {
   /** Pixels of right-edge inset to leave clear for an overlay (e.g. results
    * panel). Shifts the zoom controls and the bottom-right status line. */
   rightInset?: number;
+  /** Pixels of left-edge inset to leave clear for an overlay. */
+  leftInset?: number;
 }
 
 const GEO_URL = "/maps/countries-110m.json";
@@ -58,6 +60,7 @@ export function WorldMap({
   selectedCountry,
   onSelectCountry,
   rightInset = 0,
+  leftInset = 0,
 }: WorldMapProps) {
   const [hovered, setHovered] = useState<string | null>(null);
   const [mousePos, setMousePos] = useState<MousePosition>({ x: 0, y: 0 });
@@ -178,7 +181,10 @@ export function WorldMap({
         </ZoomableGroup>
       </ComposableMap>
 
-      <div className="pointer-events-none absolute top-3 left-4 font-mono text-[10px] uppercase tracking-[0.18em] text-(--color-foreground-subtle)">
+      <div
+        className="pointer-events-none absolute top-3 font-mono text-[10px] uppercase tracking-[0.18em] text-(--color-foreground-subtle)"
+        style={{ left: 16 + leftInset }}
+      >
         <span className="text-(--color-foreground-muted)">Hover</span>
         {hovered ? (
           <>

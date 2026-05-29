@@ -30,7 +30,7 @@ interface MainPaneProps {
 
 /**
  * The map is the only surface — no view toggle, no JSON panel, no header.
- * Results live in the right-side overlay panel; nothing covers the map
+ * Results live in the left-side overlay panel; nothing covers the map
  * otherwise. Error states surface as a docked banner inside the map area.
  */
 export function MainPane({
@@ -55,7 +55,7 @@ export function MainPane({
       <WorldMap
         selectedCountry={selectedCountry}
         onSelectCountry={onSelectCountry}
-        rightInset={panelOpen ? PANEL_WIDTH_PX : 0}
+        leftInset={panelOpen ? PANEL_WIDTH_PX : 0}
       />
 
       {data && panelOpen ? (

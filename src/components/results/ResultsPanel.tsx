@@ -21,7 +21,7 @@ interface ResultsPanelProps {
 export const PANEL_WIDTH_PX = 400;
 
 /**
- * Right-side overlay panel containing the reconciled queue. Rendered inside
+ * Left-side overlay panel containing the reconciled results. Rendered inside
  * the map view rather than as its own surface so the user keeps the map
  * context while browsing results.
  */
@@ -39,14 +39,14 @@ export function ResultsPanel({
   const listKey = `${query?.country ?? ""}|${query?.year ?? ""}|${query?.genre ?? ""}`;
   return (
     <aside
-      className="absolute top-0 right-0 bottom-0 z-10 flex flex-col border-l border-(--color-border) bg-surface/95 shadow-2xl backdrop-blur-md"
+      className="absolute top-0 left-0 bottom-0 z-10 flex flex-col border-r border-(--color-border) bg-surface/95 shadow-2xl backdrop-blur-md"
       style={{ width: PANEL_WIDTH_PX }}
-      aria-label="Releases queue"
+      aria-label="Releases results"
     >
       <header className="flex shrink-0 items-start justify-between gap-3 border-b border-(--color-border) px-4 py-3">
         <div className="min-w-0">
           <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-(--color-foreground-subtle)">
-            Queue
+            Results
           </p>
           <p
             className="mt-0.5 truncate font-mono text-xs text-(--color-foreground)"
@@ -92,7 +92,7 @@ export function ReopenButton({ count, onClick }: ReopenButtonProps) {
       onClick={onClick}
       className="absolute top-9 left-4 z-10 flex items-center gap-2 rounded-sm border border-(--color-border) bg-surface/85 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-(--color-foreground-muted) backdrop-blur-sm transition-colors hover:border-(--color-accent-muted) hover:text-(--color-accent)"
     >
-      <span>Open queue</span>
+      <span>Open results</span>
       <span className="text-(--color-accent)">·</span>
       <span>{count.toLocaleString()}</span>
     </button>
