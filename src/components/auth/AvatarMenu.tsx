@@ -7,7 +7,6 @@ import { useEffect, useRef, useState } from "react";
 interface AvatarMenuProps {
   onRequestAbout?: () => void;
   onRequestPlaylists?: () => void;
-  onRequestSpotifySettings?: () => void;
 }
 
 interface UserProfile {
@@ -19,7 +18,6 @@ interface UserProfile {
 export function AvatarMenu({
   onRequestAbout,
   onRequestPlaylists,
-  onRequestSpotifySettings,
 }: AvatarMenuProps) {
   const [open, setOpen] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -132,18 +130,6 @@ export function AvatarMenu({
             className="block w-full rounded-sm px-2 py-1.5 text-left font-mono text-[11px] uppercase tracking-[0.12em] text-(--color-foreground-muted) transition-colors hover:bg-(--color-surface) hover:text-(--color-accent)"
           >
             Playlists
-          </button>
-
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              setOpen(false);
-              onRequestSpotifySettings?.();
-            }}
-            className="block w-full rounded-sm px-2 py-1.5 text-left font-mono text-[11px] uppercase tracking-[0.12em] text-(--color-foreground-muted) transition-colors hover:bg-(--color-surface) hover:text-(--color-accent)"
-          >
-            Spotify
           </button>
 
           <button

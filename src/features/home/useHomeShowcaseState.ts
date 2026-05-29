@@ -49,9 +49,6 @@ export interface HomeShowcaseState {
   aboutOpen: boolean;
   openAbout: () => void;
   closeAbout: () => void;
-  spotifySettingsOpen: boolean;
-  openSpotifySettings: () => void;
-  closeSpotifySettings: () => void;
   favoritesOpen: boolean;
   openFavorites: () => void;
   closeFavorites: () => void;
@@ -67,7 +64,6 @@ export function useHomeShowcaseState(): HomeShowcaseState {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
-  const [spotifySettingsOpen, setSpotifySettingsOpen] = useState(false);
   const [favoritesOpen, setFavoritesOpen] = useState(false);
   const [playlistsOpen, setPlaylistsOpen] = useState(false);
 
@@ -200,9 +196,6 @@ export function useHomeShowcaseState(): HomeShowcaseState {
     aboutOpen,
     openAbout: () => setAboutOpen(true),
     closeAbout: () => setAboutOpen(false),
-    spotifySettingsOpen,
-    openSpotifySettings: () => setSpotifySettingsOpen(true),
-    closeSpotifySettings: () => setSpotifySettingsOpen(false),
     favoritesOpen,
     openFavorites: () => setFavoritesOpen(true),
     closeFavorites: () => setFavoritesOpen(false),

@@ -3,7 +3,6 @@
 import { AboutModal } from "@/components/auth/dialogs/AboutModal";
 import { FavoritesDialog } from "@/components/auth/dialogs/FavoritesDialog";
 import { PlaylistsDialog } from "@/components/auth/dialogs/PlaylistsDialog";
-import { SpotifySettingsModal } from "@/components/spotify/SpotifySettingsModal";
 import { FilterPanel } from "@/components/filters/FilterPanel";
 import { MainPane } from "@/components/layout/MainPane";
 import { NowPlayingPane } from "@/components/results/NowPlayingPane";
@@ -24,7 +23,6 @@ export function HomeShowcase({ state }: HomeShowcaseProps) {
           onReset={state.handleReset}
           onRequestAbout={state.openAbout}
           onRequestPlaylists={state.openPlaylists}
-          onRequestSpotifySettings={state.openSpotifySettings}
           isLoading={state.isLoading}
         />
       </div>
@@ -43,7 +41,6 @@ export function HomeShowcase({ state }: HomeShowcaseProps) {
       </main>
       <NowPlayingPane />
       <AboutModal open={state.aboutOpen} onClose={state.closeAbout} />
-      <SpotifySettingsModal open={state.spotifySettingsOpen} onClose={state.closeSpotifySettings} />
       <FavoritesDialog open={state.favoritesOpen} onClose={state.closeFavorites} />
       <PlaylistsDialog open={state.playlistsOpen} onClose={state.closePlaylists} />
     </div>
