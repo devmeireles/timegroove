@@ -19,6 +19,7 @@ interface MainPaneProps {
   lastQuery: DiscogsSearchFilters | null;
   selectedCountry: string | null;
   onSelectCountry: (country: string) => void;
+  rightInset?: number;
   /** How many pages of results have been fetched so far (1 = just the
    * initial page). Used by the list to decide whether to gate on the
    * full-screen reconcile loader. */
@@ -39,6 +40,7 @@ export function MainPane({
   lastQuery,
   selectedCountry,
   onSelectCountry,
+  rightInset = 0,
   pagesLoaded,
   hasMore,
   isLoadingMore,
@@ -56,6 +58,7 @@ export function MainPane({
         selectedCountry={selectedCountry}
         onSelectCountry={onSelectCountry}
         leftInset={panelOpen ? PANEL_WIDTH_PX : 0}
+        rightInset={rightInset}
       />
 
       {data && panelOpen ? (

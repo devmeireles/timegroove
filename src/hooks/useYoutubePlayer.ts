@@ -123,6 +123,8 @@ export interface UseYoutubePlayer {
   loadedRelease: NormalizedRelease | null;
   /** Spotify metadata for the loaded release — used for cover art etc. */
   loadedSpotify: EnrichedSpotify | null;
+  /** Current queue as registered by the active release/list surface. */
+  queueItems: PlayReleaseInput[];
   isPlaying: boolean;
   /** Per-release resolution status — undefined means never attempted. */
   resolveStatus: Map<string, ResolveStatus>;
@@ -132,6 +134,8 @@ export interface UseYoutubePlayer {
   durationSec: number;
   /** Current queue order used for auto-advance on track end. */
   registerQueue: (items: PlayReleaseInput[]) => void;
+  /** Remove a release from the current queue, if it is not the active item. */
+  removeFromQueue: (input: PlayReleaseInput) => void;
   playRelease: (input: PlayReleaseInput) => void;
   /** Toggle play/pause on the currently-loaded release. No-op when nothing
    * is loaded. */
@@ -157,6 +161,7 @@ export function useYoutubePlayer(): UseYoutubePlayer {
   );
   const [loadedSpotify, setLoadedSpotify] =
     useState<EnrichedSpotify | null>(null);
+  const [queueItems, setQueueItems] = useState<PlayReleaseInput[]>([]);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTimeSec, setCurrentTimeSec] = useState(0);
   const [durationSec, setDurationSec] = useState(0);
@@ -185,6 +190,23 @@ export function useYoutubePlayer(): UseYoutubePlayer {
     if (nextIndex < 0 || nextIndex >= queue.length) return;
 
     play(queue[nextIndex]);
+  }, []);
+
+  const removeFromQueue = useCallback((input: PlayReleaseInput) => {
+    const current = loadedReleaseRef.current;
+    if (
+      current &&
+      current.id === input.release.id &&
+      getReleaseDiscogsType(current) === getReleaseDiscogsType(input.release)
+    ) {
+      return;
+    }
+
+    const key = getReleaseIdentityKey(input.release);
+    queueRef.current = queueRef.current.filter(
+      (item) => getReleaseIdentityKey(item.release) !== key,
+    );
+    setQueueItems(queueRef.current);
   }, []);
 
   useEffect(() => {
@@ -366,6 +388,12 @@ export function useYoutubePlayer(): UseYoutubePlayer {
           setCurrentTimeSec(0);
           setDurationSec(0);
         }
+
+        if (queueRef.current.length === 0) {
+          const nextQueue = [{ release, spotify }];
+          queueRef.current = nextQueue;
+          setQueueItems(nextQueue);
+        }
       } catch (err) {
         console.error("YouTube player error:", err);
         setResolveStatus((prev) => {
@@ -384,6 +412,7 @@ export function useYoutubePlayer(): UseYoutubePlayer {
 
   const registerQueue = useCallback((items: PlayReleaseInput[]) => {
     queueRef.current = items;
+    setQueueItems(items);
   }, []);
 
   const togglePlay = useCallback(() => {
@@ -434,11 +463,13 @@ export function useYoutubePlayer(): UseYoutubePlayer {
     containerRef,
     loadedRelease,
     loadedSpotify,
+    queueItems,
     isPlaying,
     currentTimeSec,
     durationSec,
     resolveStatus,
     registerQueue,
+    removeFromQueue,
     playRelease,
     togglePlay,
     playPrevious,

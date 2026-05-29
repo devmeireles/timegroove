@@ -6,6 +6,7 @@ import { PlaylistsDialog } from "@/components/auth/dialogs/PlaylistsDialog";
 import { FilterPanel } from "@/components/filters/FilterPanel";
 import { MainPane } from "@/components/layout/MainPane";
 import { NowPlayingPane } from "@/components/results/NowPlayingPane";
+import { QueueDrawer, QUEUE_PANEL_WIDTH_PX } from "@/components/results/QueueDrawer";
 import type { HomeShowcaseState } from "@/features/home/useHomeShowcaseState";
 
 interface HomeShowcaseProps {
@@ -14,7 +15,7 @@ interface HomeShowcaseProps {
 
 export function HomeShowcase({ state }: HomeShowcaseProps) {
   return (
-    <div className="flex h-screen w-screen flex-col overflow-hidden">
+    <div className="relative flex h-screen w-screen flex-col overflow-hidden">
       <div className="shrink-0 border-b border-(--color-border) bg-(--color-surface)">
         <FilterPanel
           values={state.filters}
@@ -33,13 +34,22 @@ export function HomeShowcase({ state }: HomeShowcaseProps) {
           lastQuery={state.lastQuery}
           selectedCountry={state.filters.country ?? null}
           onSelectCountry={state.handleSelectCountry}
+          rightInset={state.queueOpen ? QUEUE_PANEL_WIDTH_PX : 0}
           pagesLoaded={state.pagesLoaded}
           hasMore={state.hasMore}
           isLoadingMore={state.isLoadingMore}
           onLoadMore={state.loadMore}
         />
       </main>
-      <NowPlayingPane />
+      {state.queueOpen ? (
+        <QueueDrawer open onClose={state.closeQueue} />
+      ) : null}
+      <NowPlayingPane
+        queueOpen={state.queueOpen}
+        onToggleQueue={() =>
+          state.queueOpen ? state.closeQueue() : state.openQueue()
+        }
+      />
       <AboutModal open={state.aboutOpen} onClose={state.closeAbout} />
       <FavoritesDialog open={state.favoritesOpen} onClose={state.closeFavorites} />
       <PlaylistsDialog open={state.playlistsOpen} onClose={state.closePlaylists} />

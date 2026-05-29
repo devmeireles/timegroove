@@ -89,19 +89,6 @@ export function ReleaseList({
       });
   }, [data.results, enrichment, pageSize]);
 
-  useEffect(() => {
-    registerQueue(
-      sorted.map(({ release }) => {
-        const reconcileState = enrichment.get(release.id);
-        const spotify =
-          reconcileState && "enriched" in reconcileState
-            ? reconcileState.enriched.spotify
-            : null;
-        return { release, spotify };
-      }),
-    );
-  }, [enrichment, registerQueue, sorted]);
-
   const requestedRef = useRef(false);
   useEffect(() => {
     if (!isLoadingMore) requestedRef.current = false;
@@ -242,7 +229,10 @@ export function ReleaseList({
                   isFavoritePending={isFavoritePending(release)}
                   onToggleFavorite={() => void toggleFavorite(release)}
                   resolveStatus={resolveStatus.get(key)}
-                  onPlay={() => playRelease({ release, spotify: enrichedSpotify })}
+                  onPlay={() => {
+                    registerQueue([{ release, spotify: enrichedSpotify }]);
+                    void playRelease({ release, spotify: enrichedSpotify });
+                  }}
                   onOpenDetail={() =>
                     setDetailItem({ release, spotify: enrichedSpotify })
                   }

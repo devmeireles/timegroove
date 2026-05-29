@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import {
+  ListMusic,
   SkipBack,
   SkipForward,
 } from "lucide-react";
@@ -24,7 +25,17 @@ import { splitDiscogsTitle } from "@/lib/text/normalize";
  * Three zones: left = track info, center = transport + seek bar,
  * right = library controls.
  */
-export function NowPlayingPane() {
+interface NowPlayingPaneProps {
+  queueOpen: boolean;
+  onToggleQueue: () => void;
+}
+
+export function NowPlayingPane({
+  queueOpen,
+  onToggleQueue,
+}: NowPlayingPaneProps) {
+  const [detailOpen, setDetailOpen] = useState(false);
+  const { isFavorite, isFavoritePending, toggleFavorite } = useFavoritesContext();
   const {
     loadedRelease,
     loadedSpotify,
@@ -36,9 +47,6 @@ export function NowPlayingPane() {
     stop,
   } = useYoutubePlayerControllerContext();
   const { currentTimeSec, durationSec } = useYoutubePlayerTimingContext();
-
-  const [detailOpen, setDetailOpen] = useState(false);
-  const { isFavorite, isFavoritePending, toggleFavorite } = useFavoritesContext();
 
   if (!loadedRelease) return null;
 
@@ -121,6 +129,21 @@ export function NowPlayingPane() {
             isPending={isFavoritePending(loadedRelease)}
             onToggle={() => void toggleFavorite(loadedRelease)}
           />
+          <button
+            type="button"
+            onClick={onToggleQueue}
+            aria-pressed={queueOpen}
+            aria-label={queueOpen ? "Close queue" : "Open queue"}
+            title={queueOpen ? "Hide queue" : "Show queue"}
+            className={
+              "flex h-8 w-8 items-center justify-center rounded-full border transition-colors " +
+              (queueOpen
+                ? "border-(--color-accent) bg-accent/15 text-(--color-accent)"
+                : "border-(--color-border) text-(--color-foreground-subtle) hover:border-(--color-border-strong) hover:text-(--color-foreground)")
+            }
+          >
+            <ListMusic size={12} aria-hidden="true" />
+          </button>
           <PlaylistMenuButton release={loadedRelease} direction="up" />
           <CloseIconButton onClick={stop} ariaLabel="Stop and close" title="Stop" />
         </div>

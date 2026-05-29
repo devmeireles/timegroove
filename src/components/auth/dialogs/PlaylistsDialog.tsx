@@ -6,6 +6,7 @@ import {
   Check,
   LoaderCircle,
   Pencil,
+  Play,
   Trash2,
   X,
 } from "lucide-react";
@@ -13,6 +14,7 @@ import { useMemo, useState } from "react";
 
 import { AccountDialogShell } from "@/components/auth/dialogs/AccountDialogShell";
 import { CoverArt } from "@/components/common/CoverArt";
+import { useYoutubePlayerControllerContext } from "@/contexts/YoutubePlayerContext";
 import { queryKeys } from "@/lib/client/queryKeys";
 import {
   deletePlaylist,
@@ -24,6 +26,8 @@ import {
   type PlaylistDetail,
   type PlaylistItem,
 } from "@/services/client/libraryApi";
+import type { PlayReleaseInput } from "@/hooks/useYoutubePlayer";
+import type { NormalizedRelease } from "@/types/discogs";
 
 interface PlaylistsDialogProps {
   open: boolean;
@@ -43,8 +47,29 @@ function getStatusLabel(playlist: PlaylistItem): string {
   }
 }
 
+function toPlayableRelease(item: PlaylistDetail["items"][number]): NormalizedRelease {
+  return {
+    id: item.discogsId,
+    type: item.discogsType,
+    title: item.releaseTitle,
+    year: item.releaseYear,
+    country: item.releaseCountry,
+    label: [],
+    genre: [],
+    style: [],
+    format: [],
+    thumb: item.coverUrl,
+    coverImage: item.coverUrl,
+    discogsUrl: null,
+    masterId: null,
+    catno: null,
+  };
+}
+
 export function PlaylistsDialog({ open, onClose }: PlaylistsDialogProps) {
   const queryClient = useQueryClient();
+  const { registerQueue, playRelease, loadedRelease } =
+    useYoutubePlayerControllerContext();
   const [selectedPlaylistId, setSelectedPlaylistId] = useState<number | null>(
     null,
   );
@@ -161,6 +186,26 @@ export function PlaylistsDialog({ open, onClose }: PlaylistsDialogProps) {
   }, [playlistsQuery.data, selectedPlaylistId]);
 
   const displayPlaylist = currentPlaylist ?? selectedPlaylist;
+  const playlistQueue = useMemo<PlayReleaseInput[]>(() => {
+    if (!currentPlaylist) return [];
+    return currentPlaylist.items.map((item) => ({
+      release: toPlayableRelease(item),
+      spotify: null,
+    }));
+  }, [currentPlaylist]);
+  const loadedPlaylistItem = currentPlaylist?.items.find(
+    (item) =>
+      loadedRelease != null &&
+      loadedRelease.id === item.discogsId &&
+      loadedRelease.type === item.discogsType,
+  );
+
+  const queueRelease = (index: number) => {
+    const queueItem = playlistQueue[index];
+    if (!queueItem) return;
+    registerQueue(playlistQueue);
+    void playRelease(queueItem);
+  };
 
   return (
     <AccountDialogShell
@@ -302,9 +347,25 @@ export function PlaylistsDialog({ open, onClose }: PlaylistsDialogProps) {
               <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.14em] text-(--color-foreground-subtle)">
                 {`Synced tracks: ${displayPlaylist?.syncedTrackCount ?? 0} • Mapped: ${displayPlaylist?.mappedItemsCount ?? 0}/${displayPlaylist?.totalItemsCount ?? 0}`}
               </p>
+              {loadedPlaylistItem ? (
+                <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.14em] text-(--color-accent)">
+                  {`Playing: ${loadedPlaylistItem.releaseTitle ?? "Untitled"}`}
+                </p>
+              ) : null}
             </div>
 
             <div className="flex shrink-0 flex-col gap-1">
+              <button
+                type="button"
+                disabled={isAnyMutationPending || playlistQueue.length === 0}
+                onClick={() => queueRelease(0)}
+                className="flex items-center justify-center gap-1 rounded-sm border border-(--color-border) px-2 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-(--color-foreground-muted) transition-colors hover:border-(--color-border-strong) hover:text-(--color-foreground) disabled:opacity-50"
+                title="Play playlist"
+              >
+                <Play size={10} />
+                Play
+              </button>
+
               <button
                 type="button"
                 disabled={isAnyMutationPending}
@@ -379,6 +440,37 @@ export function PlaylistsDialog({ open, onClose }: PlaylistsDialogProps) {
                   key={`${item.discogsType}-${item.discogsId}`}
                   className="flex items-center gap-3 rounded-sm border border-(--color-border) bg-(--color-surface-elevated) p-2"
                 >
+                  <button
+                    type="button"
+                    disabled={isAnyMutationPending}
+                    onClick={() => {
+                      const index = playlistQueue.findIndex(
+                        (queueItem) =>
+                          queueItem.release.id === item.discogsId &&
+                          queueItem.release.type === item.discogsType,
+                      );
+                      if (index >= 0) queueRelease(index);
+                    }}
+                    className={
+                      "flex h-8 w-8 shrink-0 items-center justify-center rounded-sm border transition-colors disabled:opacity-50 " +
+                      (loadedRelease != null &&
+                      loadedRelease.id === item.discogsId &&
+                      loadedRelease.type === item.discogsType
+                        ? "border-(--color-accent) text-(--color-accent)"
+                        : "border-(--color-border) text-(--color-foreground-muted) hover:border-(--color-border-strong) hover:text-(--color-foreground)")
+                    }
+                    aria-label={`Play ${item.releaseTitle ?? "release"}`}
+                    title={
+                      loadedRelease != null &&
+                      loadedRelease.id === item.discogsId &&
+                      loadedRelease.type === item.discogsType
+                        ? "Currently playing"
+                        : "Play release"
+                    }
+                  >
+                    <Play size={10} />
+                  </button>
+
                   <CoverArt
                     url={item.coverUrl}
                     title={item.releaseTitle ?? "Untitled"}
