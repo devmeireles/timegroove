@@ -42,6 +42,13 @@ export function PlaylistMenuButton({
     enabled: open,
   });
 
+  const prefetchPlaylists = () => {
+    void queryClient.prefetchQuery({
+      queryKey,
+      queryFn: () => fetchPlaylists({ discogsId: release.id, discogsType }),
+    });
+  };
+
   useEffect(() => {
     if (!open) return;
     const onPointerDown = (event: PointerEvent) => {
@@ -118,6 +125,8 @@ export function PlaylistMenuButton({
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
+        onPointerEnter={prefetchPlaylists}
+        onFocus={prefetchPlaylists}
         className={
           "flex h-8 w-8 items-center justify-center rounded-full border transition-colors " +
           (hasMembership

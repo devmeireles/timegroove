@@ -87,10 +87,10 @@ export async function deletePlaylistEverywhere(
       const token = await getValidSpotifyToken(userId);
       await deleteSpotifyPlaylist(token.token, playlist.spotifyPlaylistId);
     } catch (error) {
-      if (error instanceof SpotifyPlaylistError && error.status === 404) {
-        // The Spotify playlist was already removed; continue deleting locally.
-      } else {
-        mapSpotifyFailure("delete", error);
+      if (
+        !(error instanceof SpotifyPlaylistError && error.status === 404)
+      ) {
+        throw error;
       }
     }
   }
