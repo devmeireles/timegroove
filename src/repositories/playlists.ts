@@ -13,6 +13,7 @@ export interface PlaylistRecord {
   userId: number;
   name: string;
   spotifyPlaylistId: string | null;
+  coverUrl?: string | null;
   spotifySyncStatus:
     | "not-synced"
     | "synced"
@@ -36,6 +37,10 @@ export interface PlaylistSyncItem {
   discogsId: number;
   discogsType: "release" | "master";
   releaseTitle: string | null;
+  coverUrl: string | null;
+  releaseYear: number | null;
+  releaseCountry: string | null;
+  createdAt: string;
 }
 
 function toSpotifyTrackUri(trackId: string): string | null {
@@ -49,7 +54,18 @@ function toSpotifyTrackUri(trackId: string): string | null {
   return `spotify:track:${trimmed}`;
 }
 
+function extractSpotifyCoverUrl(rawSpotifyPayload: unknown): string | null {
+  if (!rawSpotifyPayload || typeof rawSpotifyPayload !== "object") return null;
+  const payload = rawSpotifyPayload as { images?: Array<{ url?: unknown }> };
+  const url = payload.images?.[0]?.url;
+  return typeof url === "string" && url.length > 0 ? url : null;
+}
+
 export interface PlaylistSyncTarget extends PlaylistRecord {
+  items: PlaylistSyncItem[];
+}
+
+export interface PlaylistDetailRecord extends PlaylistRecord {
   items: PlaylistSyncItem[];
 }
 
@@ -99,6 +115,11 @@ export async function listPlaylistsForUser(
       playlistId: appPlaylistItems.playlistId,
       discogsId: appPlaylistItems.discogsId,
       discogsType: appPlaylistItems.discogsType,
+      releaseTitle: appPlaylistItems.releaseTitle,
+      releaseYear: appPlaylistItems.releaseYear,
+      releaseCountry: appPlaylistItems.releaseCountry,
+      coverUrl: appPlaylistItems.coverUrl,
+      createdAt: appPlaylistItems.createdAt,
     })
     .from(appPlaylistItems)
     .where(inArray(appPlaylistItems.playlistId, playlistIds));
@@ -119,16 +140,18 @@ export async function listPlaylistsForUser(
 
   const mappings = await findMappingsForReleases([...releasesToResolve.values()]);
   const mappingTrackIdsByRelease = new Map<string, string[]>();
+  const coverUrlByRelease = new Map<string, string | null>();
   for (const mapping of mappings) {
-    if (mapping.spotifyTrackIds.length === 0) continue;
-    mappingTrackIdsByRelease.set(
-      `${mapping.discogsId}:${mapping.discogsType}`,
-      mapping.spotifyTrackIds,
-    );
+    const key = `${mapping.discogsId}:${mapping.discogsType}`;
+    if (mapping.spotifyTrackIds.length > 0) {
+      mappingTrackIdsByRelease.set(key, mapping.spotifyTrackIds);
+    }
+    coverUrlByRelease.set(key, extractSpotifyCoverUrl(mapping.rawSpotifyPayload));
   }
 
   const mappedItemsByPlaylist = new Map<number, number>();
   const uniqueTracksByPlaylist = new Map<number, Set<string>>();
+  const coverUrlByPlaylist = new Map<number, string | null>();
   for (const item of playlistItems) {
     const mappedTrackIds = mappingTrackIdsByRelease.get(
       `${item.discogsId}:${item.discogsType}`,
@@ -147,12 +170,23 @@ export async function listPlaylistsForUser(
       uniqueTracksByPlaylist.get(item.playlistId) ?? new Set<string>();
     playlistTracks.add(playableTrackId);
     uniqueTracksByPlaylist.set(item.playlistId, playlistTracks);
+
+    if (!coverUrlByPlaylist.has(item.playlistId)) {
+      const coverUrl =
+        coverUrlByRelease.get(`${item.discogsId}:${item.discogsType}`) ??
+        item.coverUrl ??
+        null;
+      if (coverUrl) {
+        coverUrlByPlaylist.set(item.playlistId, coverUrl);
+      }
+    }
   }
 
   if (!release) {
     return playlists.map((playlist) => ({
       ...playlist,
       includesRelease: false,
+      coverUrl: coverUrlByPlaylist.get(playlist.id) ?? null,
       totalItemsCount: totalItemsByPlaylist.get(playlist.id) ?? 0,
       mappedItemsCount: mappedItemsByPlaylist.get(playlist.id) ?? 0,
       syncedTrackCount: uniqueTracksByPlaylist.get(playlist.id)?.size ?? 0,
@@ -174,10 +208,68 @@ export async function listPlaylistsForUser(
   return playlists.map((playlist) => ({
     ...playlist,
     includesRelease: includedSet.has(playlist.id),
+    coverUrl: coverUrlByPlaylist.get(playlist.id) ?? null,
     totalItemsCount: totalItemsByPlaylist.get(playlist.id) ?? 0,
     mappedItemsCount: mappedItemsByPlaylist.get(playlist.id) ?? 0,
     syncedTrackCount: uniqueTracksByPlaylist.get(playlist.id)?.size ?? 0,
   }));
+}
+
+export async function getPlaylistDetailsForUser(
+  userId: number,
+  playlistId: number,
+): Promise<PlaylistDetailRecord | null> {
+  const playlist = await getPlaylistForUser(userId, playlistId);
+  if (!playlist) return null;
+
+  const db = await getOrm();
+  const items = await db
+    .select({
+      discogsId: appPlaylistItems.discogsId,
+      discogsType: appPlaylistItems.discogsType,
+      releaseTitle: appPlaylistItems.releaseTitle,
+      releaseYear: appPlaylistItems.releaseYear,
+      releaseCountry: appPlaylistItems.releaseCountry,
+      coverUrl: appPlaylistItems.coverUrl,
+      createdAt: appPlaylistItems.createdAt,
+    })
+    .from(appPlaylistItems)
+    .where(eq(appPlaylistItems.playlistId, playlist.id))
+    .orderBy(appPlaylistItems.createdAt, appPlaylistItems.id);
+
+  const mappings = await findMappingsForReleases(
+    items.map((item) => ({
+      discogsId: item.discogsId,
+      discogsType: item.discogsType,
+    })),
+  );
+  const coverUrlByRelease = new Map<string, string | null>();
+  for (const mapping of mappings) {
+    coverUrlByRelease.set(
+      `${mapping.discogsId}:${mapping.discogsType}`,
+      extractSpotifyCoverUrl(mapping.rawSpotifyPayload),
+    );
+  }
+
+  return {
+    ...playlist,
+    coverUrl:
+      items
+        .map(
+          (item) =>
+            coverUrlByRelease.get(`${item.discogsId}:${item.discogsType}`) ??
+            item.coverUrl ??
+            null,
+        )
+        .find((url): url is string => url !== null) ?? null,
+    items: items.map((item) => ({
+      ...item,
+      coverUrl:
+        coverUrlByRelease.get(`${item.discogsId}:${item.discogsType}`) ??
+        item.coverUrl ??
+        null,
+    })),
+  };
 }
 
 export async function createPlaylistForUser(
@@ -386,6 +478,10 @@ export async function getPlaylistSyncTarget(
       discogsId: appPlaylistItems.discogsId,
       discogsType: appPlaylistItems.discogsType,
       releaseTitle: appPlaylistItems.releaseTitle,
+      coverUrl: appPlaylistItems.coverUrl,
+      releaseYear: appPlaylistItems.releaseYear,
+      releaseCountry: appPlaylistItems.releaseCountry,
+      createdAt: appPlaylistItems.createdAt,
     })
     .from(appPlaylistItems)
     .where(eq(appPlaylistItems.playlistId, playlist.id))

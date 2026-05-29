@@ -25,6 +25,7 @@ export interface PlaylistItem {
   id: number;
   name: string;
   spotifyPlaylistId: string | null;
+  coverUrl: string | null;
   spotifySyncStatus:
     | "not-synced"
     | "synced"
@@ -41,6 +42,20 @@ export interface PlaylistItem {
 
 export interface PlaylistMenuItem extends PlaylistItem {
   includesRelease: boolean;
+}
+
+export interface PlaylistDetailItem {
+  discogsId: number;
+  discogsType: DiscogsType;
+  releaseTitle: string | null;
+  releaseYear: number | null;
+  releaseCountry: string | null;
+  coverUrl: string | null;
+  createdAt: string;
+}
+
+export interface PlaylistDetail extends PlaylistItem {
+  items: PlaylistDetailItem[];
 }
 
 async function ensureApiOk(response: Response, fallbackError: string) {
@@ -116,6 +131,21 @@ export async function fetchPlaylists(
   return data.playlists ?? [];
 }
 
+export async function fetchPlaylist(playlistId: number): Promise<PlaylistDetail> {
+  const response = await fetch(`/api/playlists/${playlistId}`, {
+    cache: "no-store",
+  });
+  const checked = await ensureApiOk(response, "Failed to load playlist");
+  if (!checked) {
+    redirectToLogin();
+    throw new Error("Authentication required");
+  }
+
+  const data = (await checked.json()) as { playlist?: PlaylistDetail };
+  if (!data.playlist) throw new Error("Failed to load playlist");
+  return data.playlist;
+}
+
 export async function createPlaylist(name: string): Promise<PlaylistItem> {
   const response = await fetch("/api/playlists", {
     method: "POST",
@@ -155,6 +185,28 @@ export async function updatePlaylistMembership(input: {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+  });
+  const checked = await ensureApiOk(response, "Failed to update playlist");
+  if (!checked) {
+    redirectToLogin();
+    throw new Error("Authentication required");
+  }
+}
+
+export async function removePlaylistItem(input: {
+  playlistId: number;
+  discogsId: number;
+  discogsType: DiscogsType;
+}): Promise<void> {
+  const response = await fetch("/api/playlists", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      playlistId: input.playlistId,
+      action: "exclude",
+      discogsId: input.discogsId,
+      discogsType: input.discogsType,
+    }),
   });
   const checked = await ensureApiOk(response, "Failed to update playlist");
   if (!checked) {

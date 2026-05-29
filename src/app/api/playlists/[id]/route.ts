@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { cookies } from "next/headers";
 
 import { findUserBySpotifyId } from "@/repositories/users";
+import { getPlaylistDetailsForUser } from "@/repositories/playlists";
 import {
   deletePlaylistEverywhere,
   PlaylistManagementError,
@@ -23,6 +24,28 @@ async function resolvePlaylistId(
   const { id } = await context.params;
   const playlistId = Number(id);
   return Number.isFinite(playlistId) && playlistId > 0 ? playlistId : null;
+}
+
+export async function GET(
+  _request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
+  const userId = await resolveCurrentUserId();
+  if (!userId) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const playlistId = await resolvePlaylistId(context);
+  if (!playlistId) {
+    return Response.json({ error: "Invalid playlist id" }, { status: 400 });
+  }
+
+  const playlist = await getPlaylistDetailsForUser(userId, playlistId);
+  if (!playlist) {
+    return Response.json({ error: "Playlist not found" }, { status: 404 });
+  }
+
+  return Response.json({ playlist });
 }
 
 interface RenamePlaylistBody {

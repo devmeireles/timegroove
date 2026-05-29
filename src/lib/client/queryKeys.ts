@@ -7,6 +7,7 @@ export const queryKeys = {
   playlists: {
     all: ["playlists"] as const,
     list: () => ["playlists", "all"] as const,
+    detail: (playlistId: number) => ["playlists", "detail", playlistId] as const,
     forRelease: (discogsId: number, discogsType: DiscogsReleaseType) =>
       ["playlists", "release", discogsId, discogsType] as const,
   },
