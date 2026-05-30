@@ -2,17 +2,16 @@
 
 import {
   AlertCircle,
-  ExternalLink,
   Pause,
   Play,
   RotateCcw,
 } from "lucide-react";
 
 import { CoverArt } from "@/components/common/CoverArt";
-import { FavoriteToggleButton } from "@/components/common/FavoriteToggleButton";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { splitDiscogsTitle } from "@/lib/text/normalize";
 import type { NormalizedRelease } from "@/types/discogs";
+import type { EnrichedSpotify } from "@/types/reconciliation";
 
 import type { ReconcileState } from "@/hooks/useReconcile";
 import type { ResolveStatus } from "@/hooks/useYoutubePlayer";
@@ -26,11 +25,9 @@ interface ReleaseCardProps {
   isPlaying: boolean;
   /** Lookup status for this card's YouTube video. Undefined = never tried. */
   resolveStatus: ResolveStatus | undefined;
-  isFavorite: boolean;
-  isFavoritePending: boolean;
-  onToggleFavorite: () => void;
+  spotifyOverride?: EnrichedSpotify | null;
   onPlay: () => void;
-  /** Opens the album detail dialog. Cover + title + metadata are clickable. */
+  /** Opens the album detail dialog. Metadata area is clickable. */
   onOpenDetail: () => void;
 }
 
@@ -40,15 +37,13 @@ export function ReleaseCard({
   isLoaded,
   isPlaying,
   resolveStatus,
-  isFavorite,
-  isFavoritePending,
-  onToggleFavorite,
+  spotifyOverride,
   onPlay,
   onOpenDetail,
 }: ReleaseCardProps) {
   const { artist, album } = splitDiscogsTitle(release.title ?? "");
   const spotify =
-    state && "enriched" in state ? state.enriched.spotify : null;
+    spotifyOverride ?? (state && "enriched" in state ? state.enriched.spotify : null);
   const coverUrl =
     spotify?.images[0]?.url ??
     release.coverImage ??
@@ -69,19 +64,34 @@ export function ReleaseCard({
             : "border-(--color-border) hover:border-(--color-border-strong)")
       }
     >
-      <button
-        type="button"
-        onClick={onOpenDetail}
-        aria-label={`View details for ${displayTitle}`}
-        className="-m-1 flex min-w-0 flex-1 cursor-pointer items-stretch gap-4 rounded-sm p-1 text-left transition-colors hover:bg-surface-elevated/50 focus:outline-none focus-visible:bg-surface-elevated/60"
-      >
+      <div className="group relative h-16 w-16 shrink-0">
         <CoverArt
           url={coverUrl}
           title={displayTitle}
           imageClassName="h-16 w-16 shrink-0 rounded-sm border border-(--color-border) object-cover"
           fallbackClassName="flex h-16 w-16 shrink-0 items-center justify-center rounded-sm border border-dashed border-(--color-border) bg-(--color-background) font-mono text-[10px] uppercase tracking-[0.18em] text-(--color-foreground-subtle)"
         />
+        <button
+          type="button"
+          onClick={onPlay}
+          className="absolute inset-0 rounded-sm bg-black/0 transition-colors hover:bg-black/65 focus:bg-black/65"
+          aria-label={isCurrentAndPlaying ? "Pause playback" : "Play release"}
+          title={isCurrentAndPlaying ? "Pause" : "Play"}
+        >
+          <ThumbOverlayStatus
+            resolveStatus={resolveStatus}
+            isLoaded={isLoaded}
+            isPlaying={isPlaying}
+          />
+        </button>
+      </div>
 
+      <button
+        type="button"
+        onClick={onOpenDetail}
+        aria-label={`View details for ${displayTitle}`}
+        className="-m-1 flex min-w-0 flex-1 cursor-pointer items-stretch gap-4 rounded-sm p-1 text-left transition-colors hover:bg-surface-elevated/50 focus:outline-none focus-visible:bg-surface-elevated/60"
+      >
         <span className="flex min-w-0 flex-1 flex-col justify-between gap-2">
           <span className="block min-w-0">
             <span className="block truncate text-sm text-(--color-foreground)">
@@ -97,43 +107,54 @@ export function ReleaseCard({
           <TagLine genres={release.genre} styles={release.style} />
         </span>
       </button>
-
-      <div
-        className="flex shrink-0 flex-col items-end justify-center gap-2 pl-2"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <FavoriteToggleButton
-          isFavorite={isFavorite}
-          isPending={isFavoritePending}
-          onToggle={onToggleFavorite}
-        />
-        <PlayButton
-          state={state}
-          isLoaded={isLoaded}
-          isPlaying={isPlaying}
-          resolveStatus={resolveStatus}
-          onPlay={onPlay}
-        />
-        {spotify?.externalUrl ? (
-          <SpotifyLink url={spotify.externalUrl} />
-        ) : null}
-      </div>
     </article>
   );
 }
 
-function SpotifyLink({ url }: { url: string }) {
+function ThumbOverlayStatus({
+  resolveStatus,
+  isLoaded,
+  isPlaying,
+}: {
+  resolveStatus: ResolveStatus | undefined;
+  isLoaded: boolean;
+  isPlaying: boolean;
+}) {
+  if (resolveStatus === "resolving") {
+    return (
+      <span className="flex h-full items-center justify-center text-white/90">
+        <LoadingSpinner size={14} />
+      </span>
+    );
+  }
+  if (resolveStatus === "no-video") {
+    return (
+      <span className="flex h-full items-center justify-center text-white/90">
+        <AlertCircle size={16} aria-hidden="true" />
+      </span>
+    );
+  }
+  if (resolveStatus === "error") {
+    return (
+      <span className="flex h-full items-center justify-center text-red-200">
+        <RotateCcw size={16} aria-hidden="true" />
+      </span>
+    );
+  }
+
+  const icon = isLoaded && isPlaying ? (
+    <Pause size={16} fill="currentColor" aria-hidden="true" />
+  ) : (
+    <Play size={16} fill="currentColor" aria-hidden="true" />
+  );
+
   return (
-    <a
-      href={url}
-      target="_blank"
-      rel="noreferrer"
-      className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.18em] text-(--color-foreground-subtle) transition-colors hover:text-(--color-accent)"
-      title="Open album on Spotify"
+    <span
+      className="flex h-full items-center justify-center text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+      aria-hidden="true"
     >
-      <span>spotify</span>
-      <ExternalLink size={10} aria-hidden="true" />
-    </a>
+      {icon}
+    </span>
   );
 }
 
@@ -165,98 +186,5 @@ function TagLine({ genres, styles }: { genres: string[]; styles: string[] }) {
         </span>
       ))}
     </div>
-  );
-}
-
-function PlayButton({
-  state,
-  isLoaded,
-  isPlaying,
-  resolveStatus,
-  onPlay,
-}: {
-  state: ReconcileState | undefined;
-  isLoaded: boolean;
-  isPlaying: boolean;
-  resolveStatus: ResolveStatus | undefined;
-  onPlay: () => void;
-}) {
-  if (state?.status === "loading" || resolveStatus === "resolving") {
-    return (
-      <button
-        type="button"
-        disabled
-        className="flex h-9 w-9 items-center justify-center rounded-full border border-(--color-border) text-(--color-foreground-subtle) opacity-50"
-        aria-label={
-          resolveStatus === "resolving" ? "Looking up video" : "Matching"
-        }
-      >
-        <LoadingSpinner size={12} />
-      </button>
-    );
-  }
-
-  if (resolveStatus === "no-video") {
-    return (
-      <div className="flex flex-col items-end gap-1">
-        <button
-          type="button"
-          disabled
-          className="flex h-9 w-9 items-center justify-center rounded-full border border-dashed border-(--color-border-strong) text-(--color-foreground-subtle)"
-          aria-label="No video available"
-          title="Discogs has no playable video for this release"
-        >
-          <AlertCircle size={14} aria-hidden="true" />
-        </button>
-        <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-(--color-foreground-subtle)">
-          Unavailable
-        </span>
-      </div>
-    );
-  }
-
-  if (resolveStatus === "error") {
-    return (
-      <div className="flex flex-col items-end gap-1">
-        <button
-          type="button"
-          onClick={onPlay}
-          className="flex h-9 w-9 items-center justify-center rounded-full border border-red-900/70 bg-red-950/30 text-red-400 transition-colors hover:border-red-700 hover:bg-red-950/50"
-          aria-label="Retry"
-          title="Lookup failed — click to retry"
-        >
-          <RotateCcw size={13} aria-hidden="true" />
-        </button>
-        <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-red-400">
-          retry
-        </span>
-      </div>
-    );
-  }
-
-  const isThisPlaying = isLoaded && isPlaying;
-
-  return (
-    <button
-      type="button"
-      onClick={onPlay}
-      className={
-        "flex h-9 w-9 items-center justify-center rounded-full transition-colors " +
-        (isThisPlaying
-          ? "bg-(--color-accent) text-(--color-background) ring-2 ring-accent/40"
-          : isLoaded
-            ? "border border-(--color-accent) text-(--color-accent)"
-            : "border border-(--color-accent-muted) text-(--color-accent) hover:bg-(--color-accent) hover:text-(--color-background)")
-      }
-      aria-label={isThisPlaying ? "Pause" : "Play"}
-      aria-pressed={isThisPlaying}
-      title={isThisPlaying ? "Pause" : isLoaded ? "Resume" : "Play"}
-    >
-      {isThisPlaying ? (
-        <Pause size={12} fill="currentColor" aria-hidden="true" />
-      ) : (
-        <Play size={12} fill="currentColor" aria-hidden="true" />
-      )}
-    </button>
   );
 }

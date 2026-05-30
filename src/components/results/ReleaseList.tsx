@@ -2,12 +2,20 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { ListPlus, MoreHorizontal, Trash2 } from "lucide-react";
 
 import { AlbumDetailDialog } from "@/components/details/AlbumDetailDialog";
+import { PlaylistMenuButton } from "@/components/playlists/PlaylistMenuButton";
 import { PaginationFooter } from "@/components/results/PaginationFooter";
 import { ReconcileLoadingState } from "@/components/results/ReconcileLoadingState";
 import { ReleaseCard } from "@/components/results/ReleaseCard";
-import { useFavoritesContext } from "@/contexts/FavoritesContext";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useYoutubePlayerControllerContext } from "@/contexts/YoutubePlayerContext";
 import { useReconcile, type ReconcileState } from "@/hooks/useReconcile";
 import {
@@ -46,13 +54,14 @@ export function ReleaseList({
 }: ReleaseListProps) {
   const pageSize = Math.max(1, data.query.per_page || 10);
   const enrichment = useReconcile(data.results);
-  const { isFavorite, isFavoritePending, toggleFavorite } = useFavoritesContext();
   const {
     containerRef: _ignoredContainer,
     loadedRelease,
+    queueItems,
     isPlaying,
     resolveStatus,
     registerQueue,
+    removeFromQueue,
     playRelease,
   } = useYoutubePlayerControllerContext();
   void _ignoredContainer;
@@ -210,13 +219,16 @@ export function ReleaseList({
               loadedRelease != null &&
               loadedRelease.id === release.id &&
               getReleaseDiscogsType(loadedRelease) === discogsType;
+            const isQueued = queueItems.some(
+              (item) => getReleaseIdentityKey(item.release) === key,
+            );
 
             return (
               <div
                 key={virtualItem.key}
                 ref={rowVirtualizer.measureElement}
                 data-index={virtualItem.index}
-                className="absolute top-0 left-0 w-full pb-3"
+                className="group absolute top-0 left-0 w-full pb-3"
                 style={{ transform: `translateY(${virtualItem.start}px)` }}
               >
                 <ReleaseCard
@@ -225,18 +237,68 @@ export function ReleaseList({
                   state={reconcileState}
                   isLoaded={isLoaded}
                   isPlaying={isPlaying}
-                  isFavorite={isFavorite(release)}
-                  isFavoritePending={isFavoritePending(release)}
-                  onToggleFavorite={() => void toggleFavorite(release)}
                   resolveStatus={resolveStatus.get(key)}
                   onPlay={() => {
-                    registerQueue([{ release, spotify: enrichedSpotify }]);
+                    const nextQueue = [
+                      { release, spotify: enrichedSpotify },
+                      ...queueItems.filter(
+                        (item) => getReleaseIdentityKey(item.release) !== key,
+                      ),
+                    ];
+                    registerQueue(nextQueue);
                     void playRelease({ release, spotify: enrichedSpotify });
                   }}
                   onOpenDetail={() =>
                     setDetailItem({ release, spotify: enrichedSpotify })
                   }
                 />
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    className="absolute top-2 right-2 z-10 flex h-7 w-7 items-center justify-center rounded-full border border-(--color-border) bg-(--color-surface) text-(--color-foreground-subtle) opacity-0 transition-colors hover:border-(--color-border-strong) hover:text-(--color-foreground) group-hover:opacity-100 group-focus-within:opacity-100"
+                    aria-label="Result item actions"
+                    title="More"
+                  >
+                    <MoreHorizontal size={12} aria-hidden="true" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align="end"
+                    className="w-52 border border-(--color-border) bg-(--color-surface-elevated) p-1 text-(--color-foreground) shadow-2xl ring-0"
+                  >
+                    <DropdownMenuGroup>
+                      <DropdownMenuItem
+                        disabled={isQueued}
+                        onClick={() => {
+                          if (isQueued) return;
+                          registerQueue([
+                            ...queueItems,
+                            { release, spotify: enrichedSpotify },
+                          ]);
+                        }}
+                        className="h-8 cursor-pointer justify-start gap-1.5 rounded-md px-2 font-mono text-[10px] uppercase tracking-[0.14em] text-(--color-foreground) data-[highlighted]:bg-(--color-surface) data-[highlighted]:text-(--color-foreground) data-[popup-open]:bg-(--color-surface) data-[popup-open]:text-(--color-foreground)"
+                      >
+                        <ListPlus size={12} />
+                        Add to queue
+                      </DropdownMenuItem>
+                      <div className="px-1 py-1">
+                        <PlaylistMenuButton
+                          release={release}
+                          direction="up"
+                          variant="menu-item"
+                        />
+                      </div>
+                      <DropdownMenuItem
+                        disabled={!isQueued || isLoaded}
+                        onClick={() =>
+                          removeFromQueue({ release, spotify: enrichedSpotify })
+                        }
+                        className="font-mono text-[10px] uppercase tracking-[0.14em]"
+                      >
+                        <Trash2 size={10} />
+                        Remove from queue
+                      </DropdownMenuItem>
+                    </DropdownMenuGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             );
           })}

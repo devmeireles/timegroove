@@ -17,9 +17,11 @@ import type { NormalizedRelease } from "@/types/discogs";
 export function PlaylistMenuButton({
   release,
   direction = "down",
+  variant = "icon",
 }: {
   release: NormalizedRelease;
   direction?: "down" | "up";
+  variant?: "icon" | "menu-item";
 }) {
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
@@ -128,15 +130,20 @@ export function PlaylistMenuButton({
         onPointerEnter={prefetchPlaylists}
         onFocus={prefetchPlaylists}
         className={
-          "flex h-8 w-8 items-center justify-center rounded-full border transition-colors " +
-          (hasMembership
-            ? "border-(--color-accent) bg-accent/20 text-(--color-accent)"
-            : "border-(--color-border) text-(--color-foreground-subtle) hover:border-(--color-border-strong) hover:text-(--color-foreground)")
+          (variant === "menu-item"
+            ? "flex h-8 w-full items-center justify-start gap-1.5 rounded-md px-2 font-mono text-[10px] uppercase tracking-[0.14em] text-(--color-foreground) transition-colors hover:bg-(--color-surface) "
+            : "flex h-8 w-8 items-center justify-center rounded-full border transition-colors ") +
+          (variant === "menu-item"
+            ? ""
+            : hasMembership
+              ? "border-(--color-accent) bg-accent/20 text-(--color-accent)"
+              : "border-(--color-border) text-(--color-foreground-subtle) hover:border-(--color-border-strong) hover:text-(--color-foreground)")
         }
         aria-label="Add to playlist"
         title="Add to playlist"
       >
         <ListPlus size={12} aria-hidden="true" />
+        {variant === "menu-item" ? <span>Add to playlist</span> : null}
       </button>
 
       {open ? (

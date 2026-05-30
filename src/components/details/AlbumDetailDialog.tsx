@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ExternalLink as ExternalLinkIcon } from "lucide-react";
+import {
+  ExternalLink as ExternalLinkIcon,
+  Pause,
+  Play,
+} from "lucide-react";
 
 import { CloseIconButton } from "@/components/common/CloseIconButton";
 import { CoverArt } from "@/components/common/CoverArt";
@@ -9,9 +13,13 @@ import { FavoriteToggleButton } from "@/components/common/FavoriteToggleButton";
 import { Dialog } from "@/components/details/Dialog";
 import { PlaylistMenuButton } from "@/components/playlists/PlaylistMenuButton";
 import { useFavoritesContext } from "@/contexts/FavoritesContext";
+import { useYoutubePlayerControllerContext } from "@/contexts/YoutubePlayerContext";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { getReleaseDiscogsType } from "@/lib/discogs/releaseIdentity";
 import { fetchDiscogsArtist } from "@/lib/clientArtist";
 import { fetchDiscogsDetail } from "@/lib/clientDetail";
 import { splitDiscogsTitle } from "@/lib/text/normalize";
+import { cn } from "@/lib/utils";
 import type {
   NormalizedArtistDetail,
   NormalizedDiscogsDetail,
@@ -164,9 +172,16 @@ function DialogBody({
   onClose: () => void;
 }) {
   const { isFavorite, isFavoritePending, toggleFavorite } = useFavoritesContext();
+  const { loadedRelease, isPlaying, registerQueue, playRelease } =
+    useYoutubePlayerControllerContext();
 
   const fallbackParsed = splitDiscogsTitle(release.title ?? "");
   const ready = detail.kind === "ready" ? detail.detail : null;
+  const isLoaded =
+    loadedRelease != null &&
+    loadedRelease.id === release.id &&
+    getReleaseDiscogsType(loadedRelease) === getReleaseDiscogsType(release);
+  const isLoadedAndPlaying = isLoaded && isPlaying;
 
   // Prefer the structured detail fields once they land; before then, fall
   // back to whatever we already had from the search row.
@@ -196,6 +211,41 @@ function DialogBody({
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant={isLoadedAndPlaying ? "default" : "outline"}
+            size="sm"
+            onClick={() => {
+              registerQueue([{ release, spotify }]);
+              void playRelease({ release, spotify });
+            }}
+            className={
+              isLoadedAndPlaying
+                ? "font-mono text-[10px] uppercase tracking-[0.14em]"
+                : "border-(--color-accent-muted) text-(--color-accent) hover:bg-(--color-accent) hover:text-(--color-background) font-mono text-[10px] uppercase tracking-[0.14em]"
+            }
+          >
+            {isLoadedAndPlaying ? (
+              <Pause size={12} fill="currentColor" aria-hidden="true" />
+            ) : (
+              <Play size={12} fill="currentColor" aria-hidden="true" />
+            )}
+            {isLoadedAndPlaying ? "Pause" : isLoaded ? "Resume" : "Play"}
+          </Button>
+          {spotify?.externalUrl ? (
+            <a
+              href={spotify.externalUrl}
+              target="_blank"
+              rel="noreferrer"
+              className={cn(
+                buttonVariants({ variant: "outline", size: "sm" }),
+                "font-mono text-[10px] uppercase tracking-[0.14em]",
+              )}
+            >
+              spotify
+              <ExternalLinkIcon size={10} aria-hidden="true" />
+            </a>
+          ) : null}
           <PlaylistMenuButton release={release} />
           <FavoriteToggleButton
             isFavorite={isFavorite(release)}
@@ -264,16 +314,10 @@ function DialogBody({
               ) : null}
             </dl>
 
-            {ready?.discogsUrl || spotify?.externalUrl ? (
+            {ready?.discogsUrl ? (
               <div className="flex flex-wrap items-center gap-4">
                 {ready?.discogsUrl ? (
                   <ExternalLink href={ready.discogsUrl} label="discogs" />
-                ) : null}
-                {spotify?.externalUrl ? (
-                  <ExternalLink
-                    href={spotify.externalUrl}
-                    label="spotify"
-                  />
                 ) : null}
               </div>
             ) : null}

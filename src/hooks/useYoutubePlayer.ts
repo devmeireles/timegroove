@@ -172,6 +172,10 @@ export function useYoutubePlayer(): UseYoutubePlayer {
   const queueRef = useRef<PlayReleaseInput[]>([]);
   const loadedReleaseRef = useRef<NormalizedRelease | null>(null);
   const playReleaseRef = useRef<((input: PlayReleaseInput) => void) | null>(null);
+  const setQueue = useCallback((items: PlayReleaseInput[]) => {
+    queueRef.current = items;
+    setQueueItems(items);
+  }, []);
 
   const playByOffset = useCallback((offset: -1 | 1) => {
     const current = loadedReleaseRef.current;
@@ -184,13 +188,26 @@ export function useYoutubePlayer(): UseYoutubePlayer {
         item.release.id === current.id &&
         getReleaseDiscogsType(item.release) === getReleaseDiscogsType(current),
     );
-    if (currentIndex < 0) return;
+    if (currentIndex < 0) {
+      if (offset === 1 && queue.length > 0) {
+        play(queue[0]);
+      }
+      return;
+    }
+
+    if (offset === 1) {
+      const remainingQueue = queue.slice(currentIndex + 1);
+      setQueue(remainingQueue);
+      if (remainingQueue.length === 0) return;
+      play(remainingQueue[0]);
+      return;
+    }
 
     const nextIndex = currentIndex + offset;
     if (nextIndex < 0 || nextIndex >= queue.length) return;
 
     play(queue[nextIndex]);
-  }, []);
+  }, [setQueue]);
 
   const removeFromQueue = useCallback((input: PlayReleaseInput) => {
     const current = loadedReleaseRef.current;
@@ -203,11 +220,10 @@ export function useYoutubePlayer(): UseYoutubePlayer {
     }
 
     const key = getReleaseIdentityKey(input.release);
-    queueRef.current = queueRef.current.filter(
+    setQueue(queueRef.current.filter(
       (item) => getReleaseIdentityKey(item.release) !== key,
-    );
-    setQueueItems(queueRef.current);
-  }, []);
+    ));
+  }, [setQueue]);
 
   useEffect(() => {
     loadedReleaseRef.current = loadedRelease;
@@ -391,8 +407,7 @@ export function useYoutubePlayer(): UseYoutubePlayer {
 
         if (queueRef.current.length === 0) {
           const nextQueue = [{ release, spotify }];
-          queueRef.current = nextQueue;
-          setQueueItems(nextQueue);
+          setQueue(nextQueue);
         }
       } catch (err) {
         console.error("YouTube player error:", err);
@@ -403,7 +418,7 @@ export function useYoutubePlayer(): UseYoutubePlayer {
         });
       }
     },
-    [ensurePlayer, loadedRelease, isPlaying],
+    [ensurePlayer, loadedRelease, isPlaying, setQueue],
   );
 
   useEffect(() => {
@@ -411,9 +426,8 @@ export function useYoutubePlayer(): UseYoutubePlayer {
   }, [playRelease]);
 
   const registerQueue = useCallback((items: PlayReleaseInput[]) => {
-    queueRef.current = items;
-    setQueueItems(items);
-  }, []);
+    setQueue(items);
+  }, [setQueue]);
 
   const togglePlay = useCallback(() => {
     if (!playerRef.current || !loadedRelease) return;

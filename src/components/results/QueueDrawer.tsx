@@ -1,17 +1,26 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   MoreHorizontal,
   X,
   Trash2,
 } from "lucide-react";
 
-import { CoverArt } from "@/components/common/CoverArt";
+import { AlbumDetailDialog } from "@/components/details/AlbumDetailDialog";
 import { PlaylistMenuButton } from "@/components/playlists/PlaylistMenuButton";
+import { ReleaseCard } from "@/components/results/ReleaseCard";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useYoutubePlayerControllerContext } from "@/contexts/YoutubePlayerContext";
-import { splitDiscogsTitle } from "@/lib/text/normalize";
+import { getReleaseDiscogsType, getReleaseIdentityKey } from "@/lib/discogs/releaseIdentity";
 import type { PlayReleaseInput } from "@/hooks/useYoutubePlayer";
+import type { EnrichedSpotify } from "@/types/reconciliation";
 
 export const QUEUE_PANEL_WIDTH_PX = 360;
 
@@ -21,19 +30,20 @@ interface QueueDrawerProps {
 }
 
 export function QueueDrawer({ open, onClose }: QueueDrawerProps) {
-  const { queueItems, loadedRelease, loadedSpotify, playRelease, removeFromQueue } =
-    useYoutubePlayerControllerContext();
-  const [openMenuKey, setOpenMenuKey] = useState<string | null>(null);
+  const {
+    queueItems,
+    loadedRelease,
+    isPlaying,
+    resolveStatus,
+    playRelease,
+    removeFromQueue,
+  } = useYoutubePlayerControllerContext();
+  const [detailItem, setDetailItem] = useState<{
+    release: PlayReleaseInput["release"];
+    spotify: EnrichedSpotify | null;
+  } | null>(null);
 
-  const displayQueue = useMemo<PlayReleaseInput[]>(() => {
-    if (queueItems.length > 0) return queueItems;
-    if (!loadedRelease) return [];
-    return [{ release: loadedRelease, spotify: loadedSpotify }];
-  }, [loadedRelease, loadedSpotify, queueItems]);
-
-  const currentKey = loadedRelease
-    ? `${loadedRelease.id}:${loadedRelease.type}`
-    : null;
+  const displayQueue: PlayReleaseInput[] = queueItems;
 
   if (!open) return null;
 
@@ -69,85 +79,69 @@ export function QueueDrawer({ open, onClose }: QueueDrawerProps) {
           </div>
         ) : (
           <ul className="flex flex-col gap-2">
-            {displayQueue.map((item, index) => {
-              const key = `${item.release.id}:${item.release.type}`;
-              const isCurrent = key === currentKey;
-              const isMenuOpen = openMenuKey === key;
+            {displayQueue.map((item) => {
+              const key = getReleaseIdentityKey(item.release);
+              const isCurrent =
+                loadedRelease != null &&
+                loadedRelease.id === item.release.id &&
+                getReleaseDiscogsType(loadedRelease) ===
+                  getReleaseDiscogsType(item.release);
               return (
                 <li
                   key={key}
-                  className="group rounded-sm border border-(--color-border) bg-(--color-surface) p-2 transition-colors hover:border-(--color-border-strong)"
+                  className="group relative"
                 >
-                  <div className="relative flex items-start gap-3">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setOpenMenuKey(null);
-                        void playRelease(item);
-                      }}
-                      className={
-                        "flex min-w-0 flex-1 items-start gap-3 rounded-sm text-left transition-colors hover:bg-surface-elevated/50 " +
-                        (isCurrent ? "ring-1 ring-accent/35" : "")
-                      }
-                    >
-                      <CoverArt
-                        url={resolveCoverUrl(item)}
-                        title={resolveTitle(item)}
-                        imageClassName="h-12 w-12 shrink-0 rounded-sm border border-(--color-border) object-cover"
-                        fallbackClassName="flex h-12 w-12 shrink-0 items-center justify-center rounded-sm border border-dashed border-(--color-border) bg-(--color-background) font-mono text-[9px] uppercase tracking-[0.12em] text-(--color-foreground-subtle)"
-                      />
+                  <ReleaseCard
+                    release={item.release}
+                    state={undefined}
+                    spotifyOverride={item.spotify}
+                    isLoaded={isCurrent}
+                    isPlaying={isPlaying}
+                    resolveStatus={resolveStatus.get(key)}
+                    onPlay={() => {
+                      void playRelease(item);
+                    }}
+                    onOpenDetail={() =>
+                      setDetailItem({ release: item.release, spotify: item.spotify })
+                    }
+                  />
 
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm text-(--color-foreground)">
-                          {resolveTitle(item)}
-                        </p>
-                        <p className="mt-0.5 truncate font-mono text-[10px] uppercase tracking-[0.14em] text-(--color-foreground-subtle)">
-                          {resolveArtist(item)}
-                        </p>
-                        <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.14em] text-(--color-foreground-subtle)">
-                          {isCurrent ? "Now playing" : `Up next · ${index + 1}`}
-                        </p>
-                      </div>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setOpenMenuKey((value) => (value === key ? null : key))
-                      }
-                      className={
-                        "mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border opacity-0 transition-colors group-hover:opacity-100 group-focus-within:opacity-100 " +
-                        (isMenuOpen
-                          ? "border-(--color-accent) text-(--color-accent)"
-                          : "border-(--color-border) text-(--color-foreground-subtle) hover:border-(--color-border-strong) hover:text-(--color-foreground)")
-                      }
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      className="absolute top-2 right-2 z-10 flex h-7 w-7 items-center justify-center rounded-full border border-(--color-border) bg-(--color-surface) text-(--color-foreground-subtle) opacity-0 transition-colors hover:border-(--color-border-strong) hover:text-(--color-foreground) group-hover:opacity-100 group-focus-within:opacity-100"
                       aria-label="Queue item actions"
                       title="More"
                     >
                       <MoreHorizontal size={12} aria-hidden="true" />
-                    </button>
-                  </div>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      align="end"
+                      className="w-52 border border-(--color-border) bg-(--color-surface-elevated) p-1 text-(--color-foreground) shadow-2xl ring-0"
+                    >
+                      <DropdownMenuGroup>
+                        <div className="px-1 py-1">
+                          <PlaylistMenuButton
+                            release={item.release}
+                            direction="up"
+                            variant="menu-item"
+                          />
+                        </div>
+                        <DropdownMenuItem
+                          disabled={isCurrent}
+                          onClick={() => removeFromQueue(item)}
+                          className="font-mono text-[10px] uppercase tracking-[0.14em]"
+                        >
+                          <Trash2 size={10} />
+                          Remove from queue
+                        </DropdownMenuItem>
+                      </DropdownMenuGroup>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
 
-                  {isMenuOpen ? (
-                    <div className="mt-2 flex items-center gap-2 rounded-sm border border-(--color-border) bg-(--color-surface-elevated) p-2">
-                      <PlaylistMenuButton release={item.release} direction="up" />
-                      <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-(--color-foreground-subtle)">
-                        add to playlist
-                      </span>
-                      <button
-                        type="button"
-                        disabled={isCurrent}
-                        onClick={() => {
-                          removeFromQueue(item);
-                          setOpenMenuKey(null);
-                        }}
-                        className="ml-auto flex items-center gap-1 rounded-sm border border-red-800/60 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-red-300 transition-colors hover:border-red-500 hover:text-red-200 disabled:opacity-40"
-                        title={isCurrent ? "Current track stays in queue" : "Remove from queue"}
-                      >
-                        <Trash2 size={10} />
-                        Remove
-                      </button>
-                    </div>
+                  {isCurrent ? (
+                    <p className="mt-1 px-2 font-mono text-[9px] uppercase tracking-[0.14em] text-(--color-foreground-subtle)">
+                      Now playing
+                    </p>
                   ) : null}
                 </li>
               );
@@ -155,30 +149,12 @@ export function QueueDrawer({ open, onClose }: QueueDrawerProps) {
           </ul>
         )}
       </div>
+
+      <AlbumDetailDialog
+        release={detailItem?.release ?? null}
+        spotify={detailItem?.spotify ?? null}
+        onClose={() => setDetailItem(null)}
+      />
     </aside>
-  );
-}
-
-function resolveTitle(item: PlayReleaseInput): string {
-  const parsed = splitDiscogsTitle(item.release.title ?? "");
-  return parsed.album ?? item.release.title ?? "Untitled";
-}
-
-function resolveArtist(item: PlayReleaseInput): string {
-  const parsed = splitDiscogsTitle(item.release.title ?? "");
-  const parts = [
-    parsed.artist,
-    item.release.year ? String(item.release.year) : null,
-    item.release.country,
-  ].filter((value): value is string => value != null && value.length > 0);
-  return parts.length > 0 ? parts.join(" · ") : "Unknown artist";
-}
-
-function resolveCoverUrl(item: PlayReleaseInput): string | null {
-  return (
-    item.spotify?.images[0]?.url ??
-    item.release.coverImage ??
-    item.release.thumb ??
-    null
   );
 }
